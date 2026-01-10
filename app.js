@@ -1,7 +1,7 @@
 const API_BASE = 'https://gamma-api.polymarket.com';
 let allEvents = [];
 let filteredEvents = [];
-let currentCategory = 'all';
+let currentTagId = null;
 
 async function init() {
     await loadTags();
@@ -28,7 +28,7 @@ async function loadTags() {
     }
 }
 
-async function loadMarkets(category = null) {
+async function loadMarkets() {
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
     const container = document.getElementById('marketsContainer');
@@ -39,10 +39,10 @@ async function loadMarkets(category = null) {
     container.innerHTML = '';
     
     try {
-        const isLive = !document.getElementById('statusToggle').checked;
-        const tagId = document.getElementById('topicFilter').value;
+        const isLive = document.getElementById('statusToggle').checked;
+        const tagId = document.getElementById('topicFilter').value || currentTagId;
         
-        let url = `${API_BASE}/events?limit=50&active=${isLive}&closed=${!isLive}`;
+        let url = `${API_BASE}/events?limit=100&active=${isLive}&closed=${!isLive}`;
         if (tagId) {
             url += `&tag_id=${tagId}`;
         }
@@ -106,9 +106,9 @@ function applyFilters() {
                 aVal = parseFloat(a.liquidity || 0);
                 bVal = parseFloat(b.liquidity || 0);
                 break;
-            case 'startDate':
-                aVal = new Date(a.startDate || 0).getTime();
-                bVal = new Date(b.startDate || 0).getTime();
+            case 'new':
+                aVal = new Date(a.createdAt || a.startDate || 0).getTime();
+                bVal = new Date(b.createdAt || b.startDate || 0).getTime();
                 break;
             default:
                 return 0;
@@ -248,7 +248,8 @@ function setupEventListeners() {
         searchDropdown.classList.add('active');
     });
     
-    searchInput.addEventListener('click', () => {
+    searchInput.addEventListener('click', (e) => {
+        e.stopPropagation();
         searchDropdown.classList.add('active');
     });
     
@@ -262,10 +263,22 @@ function setupEventListeners() {
     document.querySelectorAll('.browse-option').forEach(option => {
         option.addEventListener('click', (e) => {
             e.stopPropagation();
-            const category = option.dataset.category;
-            currentCategory = category;
+            const sortValue = option.dataset.sort;
+            
+            if (sortValue === 'new') {
+                document.getElementById('sortBy').value = 'new';
+            } else if (sortValue === 'ending-soon') {
+                // Sort by end date ascending
+                document.getElementById('sortBy').value = 'new';
+                document.getElementById('orderBy').value = 'asc';
+            } else {
+                document.getElementById('sortBy').value = sortValue;
+                document.getElementById('orderBy').value = 'desc';
+            }
+            
             searchDropdown.classList.remove('active');
-            loadMarkets(category);
+            applyFilters();
+            renderMarkets();
         });
     });
     
@@ -280,9 +293,18 @@ function setupEventListeners() {
             // Add active class to clicked item
             item.classList.add('active');
             
+            const tagId = item.dataset.tag;
             const category = item.dataset.category;
-            currentCategory = category;
-            loadMarkets(category);
+            
+            if (category === 'all') {
+                currentTagId = null;
+                document.getElementById('topicFilter').value = '';
+            } else if (tagId) {
+                currentTagId = tagId;
+                document.getElementById('topicFilter').value = tagId;
+            }
+            
+            loadMarkets();
         });
     });
     
@@ -294,6 +316,7 @@ function setupEventListeners() {
     
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
+            searchDropdown.classList.remove('active');
             applyFilters();
             renderMarkets();
         }
@@ -301,12 +324,13 @@ function setupEventListeners() {
     
     // Topic filter
     document.getElementById('topicFilter').addEventListener('change', () => {
-        loadMarkets(currentCategory);
+        currentTagId = document.getElementById('topicFilter').value;
+        loadMarkets();
     });
     
     // Status toggle
     document.getElementById('statusToggle').addEventListener('change', () => {
-        loadMarkets(currentCategory);
+        loadMarkets();
     });
     
     // Sort controls
