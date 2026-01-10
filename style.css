@@ -34,6 +34,7 @@ body {
     color: #000;
     white-space: nowrap;
     flex-shrink: 0;
+    line-height: 64px;
 }
 
 .search-wrapper {
@@ -142,34 +143,41 @@ body {
 .nav-bar {
     display: flex;
     gap: 24px;
-    padding: 16px 0;
+    padding: 0;
     border-bottom: 1px solid #e5e7eb;
     overflow-x: auto;
     white-space: nowrap;
     align-items: center;
+    height: 48px;
 }
 
 .nav-item {
     font-size: 14px;
     color: #6b7280;
     text-decoration: none;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 0 12px;
     transition: all 0.2s;
     display: flex;
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
+    height: 48px;
+    line-height: 48px;
+    border-bottom: 2px solid transparent;
 }
 
 .nav-item:hover {
-    background: #f9fafb;
     color: #000;
 }
 
 .nav-item.active {
     color: #000;
     font-weight: 500;
+    border-bottom-color: #000;
+}
+
+.nav-item svg {
+    margin-top: -2px;
 }
 
 .controls {
@@ -395,6 +403,10 @@ body {
         flex-wrap: wrap;
         height: auto;
         padding: 12px 0;
+    }
+    
+    .logo {
+        line-height: normal;
     }
     
     .search-wrapper {
