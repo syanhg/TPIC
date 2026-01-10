@@ -6,59 +6,174 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background-color: #f5f5f5;
+    background-color: #ffffff;
     color: #333;
-    padding: 20px;
+}
+
+.top-bar {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-container {
     max-width: 1400px;
     margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 64px;
 }
 
-header {
-    margin-bottom: 30px;
-}
-
-h1 {
-    font-size: 24px;
-    font-weight: 400;
+.logo {
+    font-size: 16px;
+    font-weight: 600;
     color: #000;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.search-wrapper {
+    flex: 1;
+    max-width: 600px;
+    position: relative;
 }
 
 .search-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    position: relative;
+    width: 100%;
 }
 
 #searchInput {
-    flex: 1;
-    padding: 12px 16px;
-    border: 1px solid #ddd;
+    width: 100%;
+    padding: 10px 16px 10px 40px;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     font-size: 14px;
     outline: none;
+    background: #f9fafb;
+    transition: all 0.2s;
 }
 
 #searchInput:focus {
-    border-color: #666;
+    background: #ffffff;
+    border-color: #9ca3af;
 }
 
-#searchBtn {
-    padding: 12px 20px;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.search-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 12px;
+    z-index: 200;
+}
+
+.search-dropdown.active {
+    display: block;
+}
+
+.dropdown-section {
+    margin-bottom: 8px;
+}
+
+.dropdown-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-bottom: 8px;
+    padding: 0 8px;
+}
+
+.browse-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.browse-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    font-size: 14px;
+    color: #374151;
+    background: white;
     cursor: pointer;
-    font-size: 18px;
+    transition: all 0.2s;
 }
 
-#searchBtn:hover {
-    background: #f5f5f5;
+.browse-option:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.browse-option svg {
+    width: 16px;
+    height: 16px;
+}
+
+.main-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.nav-bar {
+    display: flex;
+    gap: 24px;
+    padding: 16px 0;
+    border-bottom: 1px solid #e5e7eb;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.nav-item {
+    font-size: 14px;
+    color: #6b7280;
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-item:hover {
+    background: #f9fafb;
+    color: #000;
+}
+
+.nav-item.active {
+    color: #000;
+    font-weight: 500;
 }
 
 .controls {
     display: flex;
     gap: 15px;
-    margin-bottom: 30px;
+    margin: 24px 0;
     flex-wrap: wrap;
     align-items: center;
 }
@@ -71,13 +186,13 @@ h1 {
 
 .control-group label {
     font-size: 14px;
-    color: #666;
+    color: #6b7280;
     white-space: nowrap;
 }
 
 .control-group select {
     padding: 8px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid #e5e7eb;
     border-radius: 6px;
     font-size: 14px;
     background: #fff;
@@ -122,7 +237,7 @@ h1 {
 }
 
 .toggle-switch input:checked + .slider {
-    background: #999;
+    background: #9ca3af;
 }
 
 .toggle-switch input:checked + .slider::before {
@@ -133,11 +248,11 @@ h1 {
     text-align: center;
     padding: 40px;
     font-size: 16px;
-    color: #666;
+    color: #6b7280;
 }
 
 .error {
-    color: #d32f2f;
+    color: #ef4444;
 }
 
 .markets-grid {
@@ -148,16 +263,16 @@ h1 {
 
 .market-card {
     background: white;
+    border: 1px solid #e5e7eb;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     transition: transform 0.2s, box-shadow 0.2s;
     cursor: pointer;
 }
 
 .market-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 .market-image {
@@ -185,7 +300,7 @@ h1 {
 
 .predictions-label {
     font-size: 12px;
-    color: #666;
+    color: #6b7280;
     margin-bottom: 8px;
 }
 
@@ -215,7 +330,7 @@ h1 {
 
 .model-name {
     font-size: 11px;
-    color: #999;
+    color: #9ca3af;
 }
 
 .percentage {
@@ -229,7 +344,7 @@ h1 {
     justify-content: space-between;
     align-items: center;
     padding-top: 12px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #f3f4f6;
 }
 
 .status-badge {
@@ -237,24 +352,55 @@ h1 {
     border-radius: 12px;
     font-size: 11px;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .status-badge.live {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: #dcfce7;
+    color: #16a34a;
 }
 
 .status-badge.closed {
-    background: #f5f5f5;
-    color: #666;
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.status-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.status-badge.live .status-indicator {
+    animation: flicker 2s infinite;
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
 
 .close-date {
     font-size: 11px;
-    color: #999;
+    color: #9ca3af;
 }
 
 @media (max-width: 768px) {
+    .header-container {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 12px 0;
+    }
+    
+    .search-wrapper {
+        order: 3;
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+    
     .markets-grid {
         grid-template-columns: 1fr;
     }
@@ -266,5 +412,9 @@ h1 {
     
     .toggle-group {
         margin-left: 0;
+    }
+    
+    .nav-bar {
+        gap: 12px;
     }
 }
