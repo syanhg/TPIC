@@ -34,13 +34,17 @@ body {
     color: #000;
     white-space: nowrap;
     flex-shrink: 0;
-    line-height: 64px;
+    display: flex;
+    align-items: center;
+    height: 100%;
 }
 
 .search-wrapper {
     flex: 1;
     max-width: 600px;
     position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .search-container {
@@ -147,8 +151,8 @@ body {
     border-bottom: 1px solid #e5e7eb;
     overflow-x: auto;
     white-space: nowrap;
-    align-items: center;
     height: 48px;
+    align-items: center;
 }
 
 .nav-item {
@@ -161,9 +165,12 @@ body {
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
-    height: 48px;
-    line-height: 48px;
+    height: 100%;
     border-bottom: 2px solid transparent;
+}
+
+.nav-item svg {
+    flex-shrink: 0;
 }
 
 .nav-item:hover {
@@ -176,13 +183,9 @@ body {
     border-bottom-color: #000;
 }
 
-.nav-item svg {
-    margin-top: -2px;
-}
-
 .controls {
     display: flex;
-    gap: 15px;
+    gap: 24px;
     margin: 24px 0;
     flex-wrap: wrap;
     align-items: center;
@@ -406,7 +409,7 @@ body {
     }
     
     .logo {
-        line-height: normal;
+        height: auto;
     }
     
     .search-wrapper {
