@@ -196,7 +196,8 @@ function createMarketCard(event) {
             </div>
             <div class="market-footer">
                 <span class="status-badge ${isLive ? 'live' : 'closed'}">
-                    ${isLive ? '● LIVE' : 'CLOSED'}
+                    <span class="status-indicator"></span>
+                    ${isLive ? 'LIVE' : 'CLOSED'}
                 </span>
                 <span class="close-date">${closeText}</span>
             </div>
@@ -237,12 +238,28 @@ function formatDate(date) {
 }
 
 function setupEventListeners() {
-    document.getElementById('searchInput').addEventListener('input', () => {
-        applyFilters();
-        renderMarkets();
+    const searchInput = document.getElementById('searchInput');
+    const searchDropdown = document.getElementById('searchDropdown');
+    
+    searchInput.addEventListener('focus', () => {
+        searchDropdown.classList.add('active');
     });
     
-    document.getElementById('searchBtn').addEventListener('click', () => {
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+            searchDropdown.classList.remove('active');
+        }
+    });
+    
+    document.querySelectorAll('.browse-option').forEach(option => {
+        option.addEventListener('click', () => {
+            const category = option.dataset.category;
+            console.log('Selected category:', category);
+            searchDropdown.classList.remove('active');
+        });
+    });
+    
+    searchInput.addEventListener('input', () => {
         applyFilters();
         renderMarkets();
     });
@@ -260,12 +277,6 @@ function setupEventListeners() {
         renderMarkets();
     });
     
-    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+    searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            applyFilters();
-            renderMarkets();
-        }
-    });
-}
-
-init();
+            applyFilt
