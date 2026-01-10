@@ -15,9 +15,11 @@ body {
     background: #ffffff;
     border-bottom: 1px solid #e5e7eb;
     padding: 0;
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 100;
+    left: 0;
+    right: 0;
+    z-index: 1000;
 }
 
 .header-container {
@@ -146,6 +148,7 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 12px 40px 24px 40px;
+    margin-top: 64px; /* Add top margin to account for fixed header */
 }
 
 .nav-bar {
