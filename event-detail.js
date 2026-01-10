@@ -1,15 +1,32 @@
-// Configuration
-const CLAUDE_API_KEY = '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';
-const EXA_API_KEY = 'ab80b7d9-b049-4cb8-94af-02cb6fa0b4d2';
-
 // Get event data from URL parameters
 const urlParams = new URLSearchParams(window.location.search);
 const eventSlug = urlParams.get('event');
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', async () => {
+    setupSearchFunctionality();
     await loadEventData();
 });
+
+function setupSearchFunctionality() {
+    const searchInput = document.getElementById('searchInput');
+    
+    // Navigate back to index when searching from detail page
+    searchInput.addEventListener('input', (e) => {
+        if (e.target.value.trim()) {
+            // Store search term and navigate back
+            localStorage.setItem('searchTerm', e.target.value);
+            window.location.href = 'index.html';
+        }
+    });
+    
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && e.target.value.trim()) {
+            localStorage.setItem('searchTerm', e.target.value);
+            window.location.href = 'index.html';
+        }
+    });
+}
 
 async function loadEventData() {
     // Get event from localStorage (passed from main page)
@@ -33,6 +50,16 @@ function displayEventInfo(event) {
     document.getElementById('volume').textContent = event.volume || '$0';
     document.getElementById('volume24h').textContent = event.volume24h || '$0';
     document.getElementById('liquidity').textContent = event.liquidity || '$0';
+    
+    // Update status badge
+    const statusBadge = document.getElementById('statusBadge');
+    if (event.active && !event.closed) {
+        statusBadge.className = 'status-badge live';
+        statusBadge.innerHTML = '<span class="status-indicator"></span>LIVE';
+    } else {
+        statusBadge.className = 'status-badge closed';
+        statusBadge.innerHTML = '<span class="status-indicator"></span>CLOSED';
+    }
 }
 
 async function performAIAnalysis(event) {
@@ -61,7 +88,7 @@ async function conductExaResearch(query) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': EXA_API_KEY
+                'x-api-key': 'ab80b7d9-b049-4cb8-94af-02cb6fa0b4d2'
             },
             body: JSON.stringify({
                 query: query,
@@ -74,7 +101,8 @@ async function conductExaResearch(query) {
         });
         
         if (!response.ok) {
-            throw new Error('Exa API request failed');
+            console.error('Exa API error:', response.status);
+            return [];
         }
         
         const data = await response.json();
@@ -89,16 +117,16 @@ async function analyzeWithClaude(event, researchData) {
     const prompt = buildMIRAIPrompt(event, researchData);
     
     try {
+        // Use the Claude API through the artifact's built-in API access
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': CLAUDE_API_KEY,
                 'anthropic-version': '2023-06-01'
             },
             body: JSON.stringify({
                 model: 'claude-sonnet-4-20250514',
-                max_tokens: 4000,
+                max_tokens: 1000,
                 messages: [{
                     role: 'user',
                     content: prompt
@@ -107,92 +135,103 @@ async function analyzeWithClaude(event, researchData) {
         });
         
         if (!response.ok) {
-            throw new Error('Claude API request failed');
+            const errorText = await response.text();
+            console.error('Claude API error:', response.status, errorText);
+            throw new Error(`Claude API request failed: ${response.status}`);
         }
         
         const data = await response.json();
-        return parseClaudeResponse(data.content[0].text);
+        
+        // Handle the response structure properly
+        if (data.content && Array.isArray(data.content)) {
+            const textContent = data.content
+                .filter(item => item.type === 'text')
+                .map(item => item.text)
+                .join('\n');
+            
+            return parseClaudeResponse(textContent);
+        }
+        
+        throw new Error('Unexpected response format from Claude');
         
     } catch (error) {
         console.error('Claude analysis error:', error);
-        throw error;
+        // Return default analysis on error
+        return {
+            predictions: [
+                { outcome: 'Yes', probability: 0.50, model: 'Baseline' },
+                { outcome: 'No', probability: 0.50, model: 'Baseline' }
+            ],
+            rationale: 'Unable to complete AI analysis. Please check console for details.',
+            confidence: 2.5,
+            keyFactors: ['Limited data available'],
+            sources: []
+        };
     }
 }
 
 function buildMIRAIPrompt(event, researchData) {
-    const sources = researchData.map((source, i) => 
-        `[${i+1}] ${source.title}\n${source.text?.substring(0, 500) || 'No content'}`
+    const sources = researchData.slice(0, 5).map((source, i) => 
+        `[${i+1}] ${source.title}\n${source.text?.substring(0, 300) || 'No content'}`
     ).join('\n\n');
     
-    return `You are an expert forecasting agent using the MIRAI methodology for event prediction. Analyze this prediction market event using statistical reasoning, historical patterns, and the provided research.
+    return `You are an expert forecasting agent. Analyze this prediction market event and provide predictions.
 
 EVENT: ${event.title}
 CLOSES: ${event.closeDate}
 
 RESEARCH SOURCES:
-${sources}
+${sources || 'No external sources available'}
 
-Using the MIRAI framework, provide your analysis in the following JSON format:
+Provide your analysis in this exact JSON format (respond with ONLY valid JSON, no markdown, no backticks):
 
 {
   "predictions": [
-    {
-      "outcome": "Yes/Outcome 1",
-      "probability": 0.85,
-      "model": "Statistical Analysis"
-    },
-    {
-      "outcome": "No/Outcome 2", 
-      "probability": 0.15,
-      "model": "Statistical Analysis"
-    }
+    {"outcome": "Yes", "probability": 0.65, "model": "Statistical Analysis"},
+    {"outcome": "No", "probability": 0.35, "model": "Statistical Analysis"}
   ],
-  "rationale": "Detailed explanation of prediction based on historical data, temporal patterns, and statistical analysis...",
+  "rationale": "Brief explanation of prediction based on available data and patterns",
   "confidence": 3.5,
-  "keyFactors": [
-    "Factor 1 explanation",
-    "Factor 2 explanation",
-    "Factor 3 explanation"
-  ],
+  "keyFactors": ["Factor 1", "Factor 2", "Factor 3"],
   "sources": [
-    {
-      "title": "Source title",
-      "description": "How this source informed the prediction",
-      "url": "https://..."
-    }
+    {"title": "Source 1", "description": "How it informed prediction", "url": "https://example.com"}
   ]
 }
 
-Apply rigorous statistical methods including:
-1. Temporal reasoning over historical patterns
-2. Multi-source information integration (structured + textual)
-3. Base rate analysis and frequency distributions
-4. Trend analysis and momentum indicators
-5. External validation against similar past events
-
-Respond ONLY with the JSON object, no additional text.`;
+Keep the response concise and ensure all probabilities sum to 1.0. Respond ONLY with the JSON object.`;
 }
 
 function parseClaudeResponse(text) {
     try {
-        // Extract JSON from response
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        // Remove any markdown code blocks
+        let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // Try to find JSON object
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
+            console.error('No JSON found in response:', text);
             throw new Error('No JSON found in response');
         }
         
-        return JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        // Validate structure
+        if (!parsed.predictions || !Array.isArray(parsed.predictions)) {
+            throw new Error('Invalid response structure');
+        }
+        
+        return parsed;
     } catch (error) {
-        console.error('Parse error:', error);
+        console.error('Parse error:', error, 'Raw text:', text);
         // Return default structure
         return {
             predictions: [
                 { outcome: 'Yes', probability: 0.50, model: 'Default' },
                 { outcome: 'No', probability: 0.50, model: 'Default' }
             ],
-            rationale: 'Unable to complete full analysis. Using baseline predictions.',
+            rationale: 'Unable to parse AI analysis. Using baseline predictions.',
             confidence: 2.5,
-            keyFactors: ['Limited data available'],
+            keyFactors: ['Analysis parsing error'],
             sources: []
         };
     }
@@ -210,8 +249,8 @@ function displayAnalysisResults(analysis) {
     predictionsGrid.innerHTML = analysis.predictions.map(pred => `
         <div class="prediction-card">
             <div class="prediction-info">
-                <h4>${pred.outcome}</h4>
-                <p>${pred.model}</p>
+                <h4>${escapeHtml(pred.outcome)}</h4>
+                <p>${escapeHtml(pred.model)}</p>
             </div>
             <div class="prediction-value">${(pred.probability * 100).toFixed(0)}%</div>
         </div>
@@ -240,10 +279,10 @@ function displayAnalysisResults(analysis) {
         document.getElementById('sourcesList').innerHTML = analysis.sources.map(source => `
             <div class="source-card">
                 <div class="source-header">
-                    <div class="source-title">${source.title}</div>
-                    ${source.url ? `<a href="${source.url}" target="_blank" class="source-link">View →</a>` : ''}
+                    <div class="source-title">${escapeHtml(source.title)}</div>
+                    ${source.url ? `<a href="${escapeHtml(source.url)}" target="_blank" class="source-link">View →</a>` : ''}
                 </div>
-                <div class="source-description">${source.description}</div>
+                <div class="source-description">${escapeHtml(source.description)}</div>
             </div>
         `).join('');
     }
@@ -300,24 +339,27 @@ function displayProbabilityChart(predictions) {
 }
 
 function generateHistoricalTrend(finalProb) {
-    // Generate realistic trend data leading to final probability
     const finalValue = finalProb * 100;
     const points = 7;
     const data = [];
     
-    // Start from a more neutral position
     let current = 50 + (Math.random() - 0.5) * 20;
     
     for (let i = 0; i < points; i++) {
         const progress = i / (points - 1);
-        // Gradually move toward final value with some noise
         const target = 50 + (finalValue - 50) * progress;
         current = current * 0.7 + target * 0.3 + (Math.random() - 0.5) * 5;
         data.push(Math.max(0, Math.min(100, current)));
     }
     
-    // Ensure last value matches final probability
     data[points - 1] = finalValue;
     
     return data;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
