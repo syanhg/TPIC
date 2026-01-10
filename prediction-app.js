@@ -1,6 +1,4 @@
 // API Keys
-const CLAUDE_API_KEY = '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';
-const EXA_API_KEY = 'ab80b7d9-b049-4cb8-94af-02cb6fa0b4d2';
 
 // Global state
 let currentMarket = null;
