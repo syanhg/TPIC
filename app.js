@@ -1,7 +1,7 @@
 const API_BASE = 'https://gamma-api.polymarket.com';
+const CORS_PROXY = 'https://corsproxy.io/?';
 let allEvents = [];
 let filteredEvents = [];
-let availableTags = new Set();
 
 // Initialize the app
 async function init() {
@@ -13,16 +13,18 @@ async function init() {
 // Load available tags
 async function loadTags() {
     try {
-        const response = await fetch(`${API_BASE}/tags?limit=100`);
+        const response = await fetch(`${CORS_PROXY}${encodeURIComponent(API_BASE + '/tags?limit=100')}`);
         const tags = await response.json();
         const topicFilter = document.getElementById('topicFilter');
         
-        tags.forEach(tag => {
-            const option = document.createElement('option');
-            option.value = tag.id;
-            option.textContent = tag.label;
-            topicFilter.appendChild(option);
-        });
+        if (Array.isArray(tags)) {
+            tags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.id;
+                option.textContent = tag.label;
+                topicFilter.appendChild(option);
+            });
+        }
     } catch (error) {
         console.error('Error loading tags:', error);
     }
@@ -36,6 +38,7 @@ async function loadMarkets() {
     
     loading.style.display = 'block';
     error.style.display = 'none';
+    error.textContent = '';
     container.innerHTML = '';
     
     try {
@@ -47,19 +50,33 @@ async function loadMarkets() {
             url += `&tag_id=${tagId}`;
         }
         
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch markets');
+        console.log('Fetching from:', url);
+        const response = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
         
-        allEvents = await response.json();
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Received data:', data);
+        
+        allEvents = Array.isArray(data) ? data : [];
+        
+        if (allEvents.length === 0) {
+            error.textContent = 'No markets found. Try different filters.';
+            error.style.display = 'block';
+            loading.style.display = 'none';
+            return;
+        }
+        
         filteredEvents = [...allEvents];
-        
         applyFilters();
         renderMarkets();
         
     } catch (err) {
-        error.textContent = `Error loading markets: ${err.message}`;
+        console.error('Fetch error:', err);
+        error.textContent = `Unable to load markets. ${err.message}`;
         error.style.display = 'block';
-        console.error('Error:', err);
     } finally {
         loading.style.display = 'none';
     }
@@ -116,7 +133,9 @@ function renderMarkets() {
     container.innerHTML = '';
     
     if (filteredEvents.length === 0) {
-        container.innerHTML = '<div class="error">No markets found</div>';
+        const error = document.getElementById('error');
+        error.textContent = 'No markets match your search criteria';
+        error.style.display = 'block';
         return;
     }
     
@@ -137,10 +156,25 @@ function createMarketCard(event) {
     // Parse outcomes and prices
     let outcomes = [];
     let prices = [];
+    
     try {
-        outcomes = JSON.parse(mainMarket.outcomes || '[]');
-        prices = JSON.parse(mainMarket.outcomePrices || '[]');
+        if (typeof mainMarket.outcomes === 'string') {
+            outcomes = JSON.parse(mainMarket.outcomes);
+        } else if (Array.isArray(mainMarket.outcomes)) {
+            outcomes = mainMarket.outcomes;
+        }
+        
+        if (typeof mainMarket.outcomePrices === 'string') {
+            prices = JSON.parse(mainMarket.outcomePrices);
+        } else if (Array.isArray(mainMarket.outcomePrices)) {
+            prices = mainMarket.outcomePrices;
+        }
     } catch (e) {
+        console.error('Error parsing outcomes:', e);
+    }
+    
+    // Fallback to basic Yes/No if parsing fails
+    if (outcomes.length === 0) {
         outcomes = ['Yes', 'No'];
         prices = ['0.50', '0.50'];
     }
@@ -162,14 +196,14 @@ function createMarketCard(event) {
         <img src="${imageUrl}" class="market-image" alt="${event.title}" 
              onerror="this.style.background='linear-gradient(135deg, #667eea 0%, #764ba2 100%)'; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3C/svg%3E'">
         <div class="market-content">
-            <h3 class="market-title">${event.title}</h3>
+            <h3 class="market-title">${escapeHtml(event.title)}</h3>
             <div class="predictions-label">Top predictions for:</div>
             <div class="predictions">
                 ${predictions.map(p => `
                     <div class="prediction-item">
                         <div class="prediction-info">
-                            <div class="outcome-label">${p.outcome}</div>
-                            <div class="model-name">Gemini 2.5 Pro</div>
+                            <div class="outcome-label">${escapeHtml(p.outcome)}</div>
+                            <div class="model-name">Market Price</div>
                         </div>
                         <div class="percentage">${(p.price * 100).toFixed(0)}%</div>
                     </div>
@@ -189,6 +223,13 @@ function createMarketCard(event) {
     });
     
     return card;
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Format date
