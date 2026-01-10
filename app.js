@@ -42,17 +42,14 @@ async function loadMarkets() {
         const isLive = document.getElementById('statusToggle').checked;
         const tagId = document.getElementById('topicFilter').value || currentTagId;
         
-        // Build query based on filters
         let url = `${API_BASE}/events?limit=100`;
         
-        // Apply status filter
         if (isLive) {
             url += `&active=true&closed=false`;
         } else {
             url += `&closed=true`;
         }
         
-        // Apply tag filter
         if (tagId) {
             url += `&tag_id=${tagId}`;
         }
@@ -189,7 +186,6 @@ function createMarketCard(event) {
         `Closes ${formatDate(endDate)}` : 
         `Closed ${formatDate(endDate)}`;
     
-    // Extract and format all available data
     const volume = formatCurrency(event.volume || 0);
     const volume24hr = formatCurrency(event.volume24hr || 0);
     const liquidity = formatCurrency(event.liquidity || 0);
@@ -243,11 +239,32 @@ function createMarketCard(event) {
         </div>
     `;
     
+    // MODIFIED: Navigate to detail page instead of external link
     card.addEventListener('click', () => {
-        window.open(`https://polymarket.com/event/${event.slug}`, '_blank');
+        navigateToDetailPage(event);
     });
     
     return card;
+}
+
+function navigateToDetailPage(event) {
+    // Store event data in localStorage for detail page
+    const eventData = {
+        title: event.title,
+        slug: event.slug,
+        closeDate: formatDate(new Date(event.endDate)),
+        volume: formatCurrency(event.volume || 0),
+        volume24h: formatCurrency(event.volume24hr || 0),
+        liquidity: formatCurrency(event.liquidity || 0),
+        image: event.image,
+        active: event.active,
+        closed: event.closed
+    };
+    
+    localStorage.setItem('currentEvent', JSON.stringify(eventData));
+    
+    // Navigate to detail page
+    window.location.href = `event-detail.html?event=${event.slug}`;
 }
 
 function formatCurrency(value) {
@@ -291,7 +308,6 @@ function setupEventListeners() {
     const searchInput = document.getElementById('searchInput');
     const searchDropdown = document.getElementById('searchDropdown');
     
-    // Search dropdown functionality
     searchInput.addEventListener('focus', () => {
         searchDropdown.classList.add('active');
     });
@@ -307,7 +323,6 @@ function setupEventListeners() {
         }
     });
     
-    // Browse option clicks
     document.querySelectorAll('.browse-option').forEach(option => {
         option.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -330,15 +345,10 @@ function setupEventListeners() {
         });
     });
     
-    // Nav bar category clicks
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            
-            // Remove active class from all items
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            
-            // Add active class to clicked item
             item.classList.add('active');
             
             const tagId = item.dataset.tag;
@@ -356,7 +366,6 @@ function setupEventListeners() {
         });
     });
     
-    // Search input
     searchInput.addEventListener('input', () => {
         applyFilters();
         renderMarkets();
@@ -370,11 +379,9 @@ function setupEventListeners() {
         }
     });
     
-    // Topic filter
     document.getElementById('topicFilter').addEventListener('change', (e) => {
         currentTagId = e.target.value;
         
-        // Update nav bar active state
         document.querySelectorAll('.nav-item').forEach(item => {
             if (currentTagId && item.dataset.tag === currentTagId) {
                 item.classList.add('active');
@@ -392,12 +399,10 @@ function setupEventListeners() {
         loadMarkets();
     });
     
-    // Status toggle
     document.getElementById('statusToggle').addEventListener('change', () => {
         loadMarkets();
     });
     
-    // Sort controls
     document.getElementById('sortBy').addEventListener('change', () => {
         applyFilters();
         renderMarkets();
