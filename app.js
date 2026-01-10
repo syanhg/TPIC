@@ -244,7 +244,7 @@ function createMarketCard(event) {
     `;
     
     card.addEventListener('click', () => {
-        window.location.href = `prediction.html?market=${event.slug}`;
+        window.open(`https://polymarket.com/event/${event.slug}`, '_blank');
     });
     
     return card;
