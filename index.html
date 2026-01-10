@@ -12,17 +12,47 @@
     </header>
 
     <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Search events by title, topic, ticker, or markets...">
-        <button id="searchBtn">🔍</button>
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search polymarket">
+        <span class="search-shortcut">/</span>
+    </div>
+
+    <div class="browse-section">
+        <h2 class="section-title">BROWSE</h2>
+        <div class="browse-buttons">
+            <button class="browse-btn active" data-filter="new">
+                <span class="browse-icon">✨</span>
+                New
+            </button>
+            <button class="browse-btn" data-filter="trending">
+                <span class="browse-icon">📈</span>
+                Trending
+            </button>
+            <button class="browse-btn" data-filter="popular">
+                <span class="browse-icon">🔥</span>
+                Popular
+            </button>
+            <button class="browse-btn" data-filter="liquid">
+                <span class="browse-icon">💧</span>
+                Liquid
+            </button>
+            <button class="browse-btn" data-filter="ending">
+                <span class="browse-icon">⏰</span>
+                Ending Soon
+            </button>
+            <button class="browse-btn" data-filter="competitive">
+                <span class="browse-icon">🎯</span>
+                Competitive
+            </button>
+        </div>
+    </div>
+
+    <div class="topics-section">
+        <h2 class="section-title">TOPICS</h2>
+        <div id="topicsGrid" class="topics-grid"></div>
     </div>
 
     <div class="controls">
-        <div class="control-group">
-            <label>Topic:</label>
-            <select id="topicFilter">
-                <option value="">🌐 All</option>
-            </select>
-        </div>
         <div class="control-group">
             <label>Sort by:</label>
             <select id="sortBy">
