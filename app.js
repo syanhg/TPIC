@@ -1,22 +1,16 @@
-// For GitHub Pages deployment - uses public CORS proxy
-const API_BASE = 'https://gamma-api.polymarket.com';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-
+const API_BASE = '/api';
 let allEvents = [];
 let filteredEvents = [];
 
-// Initialize the app
 async function init() {
     await loadTags();
     await loadMarkets();
     setupEventListeners();
 }
 
-// Load available tags
 async function loadTags() {
     try {
-        const url = `${API_BASE}/tags?limit=100`;
-        const response = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
+        const response = await fetch(`${API_BASE}/tags?limit=100`);
         const tags = await response.json();
         const topicFilter = document.getElementById('topicFilter');
         
@@ -33,7 +27,6 @@ async function loadTags() {
     }
 }
 
-// Load markets from API
 async function loadMarkets() {
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
@@ -53,16 +46,12 @@ async function loadMarkets() {
             url += `&tag_id=${tagId}`;
         }
         
-        console.log('Fetching from:', url);
-        const response = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
-        
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const data = await response.json();
-        console.log('Received data:', data);
-        
         allEvents = Array.isArray(data) ? data : [];
         
         if (allEvents.length === 0) {
@@ -85,7 +74,6 @@ async function loadMarkets() {
     }
 }
 
-// Apply search and filters
 function applyFilters() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     
@@ -98,7 +86,6 @@ function applyFilters() {
         return matchesSearch;
     });
     
-    // Apply sorting
     const sortBy = document.getElementById('sortBy').value;
     const orderBy = document.getElementById('orderBy').value;
     
@@ -130,7 +117,6 @@ function applyFilters() {
     });
 }
 
-// Render markets to the page
 function renderMarkets() {
     const container = document.getElementById('marketsContainer');
     container.innerHTML = '';
@@ -148,7 +134,6 @@ function renderMarkets() {
     });
 }
 
-// Create a market card
 function createMarketCard(event) {
     const card = document.createElement('div');
     card.className = 'market-card';
@@ -156,7 +141,6 @@ function createMarketCard(event) {
     const markets = event.markets || [];
     const mainMarket = markets[0] || {};
     
-    // Parse outcomes and prices
     let outcomes = [];
     let prices = [];
     
@@ -176,13 +160,11 @@ function createMarketCard(event) {
         console.error('Error parsing outcomes:', e);
     }
     
-    // Fallback to basic Yes/No if parsing fails
     if (outcomes.length === 0) {
         outcomes = ['Yes', 'No'];
         prices = ['0.50', '0.50'];
     }
     
-    // Get top 2 predictions
     const predictions = outcomes.slice(0, 2).map((outcome, i) => ({
         outcome,
         price: parseFloat(prices[i] || 0)
@@ -196,7 +178,7 @@ function createMarketCard(event) {
         `Closed ${formatDate(endDate)}`;
     
     card.innerHTML = `
-        <img src="${imageUrl}" class="market-image" alt="${event.title}" 
+        <img src="${imageUrl}" class="market-image" alt="${escapeHtml(event.title)}" 
              onerror="this.style.background='linear-gradient(135deg, #667eea 0%, #764ba2 100%)'; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3C/svg%3E'">
         <div class="market-content">
             <h3 class="market-title">${escapeHtml(event.title)}</h3>
@@ -228,14 +210,12 @@ function createMarketCard(event) {
     return card;
 }
 
-// Escape HTML to prevent XSS
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// Format date
 function formatDate(date) {
     const now = new Date();
     const diff = date - now;
@@ -256,7 +236,6 @@ function formatDate(date) {
     }
 }
 
-// Setup event listeners
 function setupEventListeners() {
     document.getElementById('searchInput').addEventListener('input', () => {
         applyFilters();
@@ -281,7 +260,6 @@ function setupEventListeners() {
         renderMarkets();
     });
     
-    // Search on Enter key
     document.getElementById('searchInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             applyFilters();
@@ -290,5 +268,4 @@ function setupEventListeners() {
     });
 }
 
-// Start the app
 init();
