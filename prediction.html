@@ -44,26 +44,41 @@
                 </div>
             </div>
 
-            <div class="right-panel">
+            <div id="chatPanel" class="chat-panel-hidden">
                 <div class="chat-container">
                     <div class="chat-header">
                         <h3>Ask Follow-up Questions</h3>
-                        <p>Have a conversation about this prediction</p>
+                        <button id="closeChat" class="close-chat">×</button>
                     </div>
                     <div id="chatMessages" class="chat-messages"></div>
                     <div class="chat-input-container">
                         <textarea 
-                            id="chatInput" 
-                            placeholder="Ask a follow-up question about this prediction..."
+                            id="chatInputSide" 
+                            placeholder="Ask a follow-up question..."
                             rows="1"
                         ></textarea>
-                        <button id="sendButton" class="send-button">
+                        <button id="sendButtonSide" class="send-button">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
                             </svg>
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div id="floatingChatInput" class="floating-chat-input">
+            <div class="floating-input-container">
+                <textarea 
+                    id="chatInputFloating" 
+                    placeholder="Ask a follow-up question about this prediction..."
+                    rows="1"
+                ></textarea>
+                <button id="sendButtonFloating" class="send-button-floating">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </div>
