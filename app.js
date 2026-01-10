@@ -1,4 +1,4 @@
-const API_BASE = 'https://gamma-api.polymarket.com';
+const API_BASE = '/api';
 let allEvents = [];
 let filteredEvents = [];
 let currentTagId = null;
@@ -267,10 +267,10 @@ function setupEventListeners() {
             
             if (sortValue === 'new') {
                 document.getElementById('sortBy').value = 'new';
-            } else if (sortValue === 'ending-soon') {
-                // Sort by end date ascending
-                document.getElementById('sortBy').value = 'new';
-                document.getElementById('orderBy').value = 'asc';
+                document.getElementById('orderBy').value = 'desc';
+            } else if (sortValue === 'competitive') {
+                document.getElementById('sortBy').value = 'liquidity';
+                document.getElementById('orderBy').value = 'desc';
             } else {
                 document.getElementById('sortBy').value = sortValue;
                 document.getElementById('orderBy').value = 'desc';
