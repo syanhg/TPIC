@@ -10,10 +10,11 @@ body {
     color: #333;
 }
 
+/* TOP BAR WITH SEARCH - MATCHING INDEX PAGE */
 .top-bar {
     background: #ffffff;
     border-bottom: 1px solid #e5e7eb;
-    padding: 16px 0;
+    padding: 0;
     position: fixed;
     top: 0;
     left: 0;
@@ -22,8 +23,12 @@ body {
 }
 
 .header-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 64px;
     padding: 0 40px;
 }
 
@@ -31,22 +36,67 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: #2563eb;
+    color: #6b7280;
     text-decoration: none;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 400;
     transition: color 0.2s;
+    flex-shrink: 0;
 }
 
 .back-button:hover {
-    color: #1d4ed8;
+    color: #000;
+}
+
+.logo {
+    font-size: 16px;
+    font-weight: 400;
+    color: #000;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.search-wrapper {
+    flex: 1;
+    max-width: 600px;
+    position: relative;
+}
+
+.search-container {
+    position: relative;
+    width: 100%;
+}
+
+#searchInput {
+    width: 100%;
+    padding: 10px 16px 10px 40px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    background: #f9fafb;
+    transition: all 0.2s;
+}
+
+#searchInput:focus {
+    background: #ffffff;
+    border-color: #9ca3af;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
 }
 
 .main-content {
     max-width: 1200px;
     margin: 0 auto;
     padding: 32px 40px;
-    margin-top: 68px; /* Add top margin to account for fixed header */
+    margin-top: 64px;
 }
 
 .event-header {
@@ -85,6 +135,11 @@ body {
 .status-badge.live {
     background: #dcfce7;
     color: #16a34a;
+}
+
+.status-badge.closed {
+    background: #f3f4f6;
+    color: #6b7280;
 }
 
 .status-indicator {
@@ -328,12 +383,32 @@ h2 {
 }
 
 @media (max-width: 768px) {
-    .header-container, .main-content {
-        padding: 16px 24px;
+    .header-container {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 12px 24px;
+    }
+    
+    .back-button {
+        order: 1;
+        flex-basis: 100%;
+        margin-bottom: 8px;
+    }
+    
+    .logo {
+        order: 2;
+    }
+    
+    .search-wrapper {
+        order: 3;
+        flex-basis: 100%;
+        max-width: 100%;
+        margin-top: 8px;
     }
     
     .main-content {
-        margin-top: 68px; /* Maintain margin on mobile */
+        padding: 16px 24px;
+        margin-top: 120px;
     }
     
     .event-header {
