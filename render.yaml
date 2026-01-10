@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: TPIC
-    runtime: node
-    rootDir: ./
-    startCommand: node app.js
-    buildCommand: npm install
