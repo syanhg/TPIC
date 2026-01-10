@@ -22,32 +22,32 @@
                     <div class="dropdown-section">
                         <div class="dropdown-title">Browse</div>
                         <div class="browse-options">
-                            <div class="browse-option" data-category="new">
+                            <div class="browse-option" data-sort="new">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 2v20M2 12h20"></path>
                                 </svg>
                                 <span>New</span>
                             </div>
-                            <div class="browse-option" data-category="trending">
+                            <div class="browse-option" data-sort="volume">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
                                     <polyline points="17 6 23 6 23 12"></polyline>
                                 </svg>
                                 <span>Trending</span>
                             </div>
-                            <div class="browse-option" data-category="popular">
+                            <div class="browse-option" data-sort="volume24hr">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
                                 </svg>
                                 <span>Popular</span>
                             </div>
-                            <div class="browse-option" data-category="liquid">
+                            <div class="browse-option" data-sort="liquidity">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                                 </svg>
                                 <span>Liquid</span>
                             </div>
-                            <div class="browse-option" data-category="ending-soon">
+                            <div class="browse-option" data-sort="ending-soon">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="12" cy="12" r="10"></circle>
                                     <polyline points="12 6 12 12 16 14"></polyline>
@@ -63,22 +63,22 @@
 
     <div class="main-content">
         <div class="nav-bar">
-            <a href="#" class="nav-item active" data-category="trending">
+            <a href="#" class="nav-item active" data-category="all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
                     <polyline points="17 6 23 6 23 12"></polyline>
                 </svg>
                 Trending
             </a>
-            <a href="#" class="nav-item" data-category="politics">Politics</a>
-            <a href="#" class="nav-item" data-category="sports">Sports</a>
-            <a href="#" class="nav-item" data-category="crypto">Crypto</a>
-            <a href="#" class="nav-item" data-category="finance">Finance</a>
-            <a href="#" class="nav-item" data-category="geopolitics">Geopolitics</a>
-            <a href="#" class="nav-item" data-category="tech">Tech</a>
-            <a href="#" class="nav-item" data-category="culture">Culture</a>
-            <a href="#" class="nav-item" data-category="economy">Economy</a>
-            <a href="#" class="nav-item" data-category="climate">Climate</a>
+            <a href="#" class="nav-item" data-tag="2">Politics</a>
+            <a href="#" class="nav-item" data-tag="7">Sports</a>
+            <a href="#" class="nav-item" data-tag="21">Crypto</a>
+            <a href="#" class="nav-item" data-tag="18">Finance</a>
+            <a href="#" class="nav-item" data-tag="11">Geopolitics</a>
+            <a href="#" class="nav-item" data-tag="20">Tech</a>
+            <a href="#" class="nav-item" data-tag="13">Culture</a>
+            <a href="#" class="nav-item" data-tag="14">Economy</a>
+            <a href="#" class="nav-item" data-tag="15">Climate</a>
         </div>
 
         <div class="controls">
@@ -94,7 +94,7 @@
                     <option value="volume24hr">Last Updated</option>
                     <option value="volume">Volume</option>
                     <option value="liquidity">Liquidity</option>
-                    <option value="startDate">Start Date</option>
+                    <option value="new">Newest</option>
                 </select>
             </div>
             <div class="control-group">
