@@ -33,23 +33,23 @@ async function loadEventData() {
 async function performDeepAnalysis(event) {
     try {
         // STEP 1: Get REAL research data from Exa
-        updateStatus('analysisStatus', '🔍 Searching web sources with Exa AI...');
-        console.log('🔍 Starting Exa research...');
+        updateStatus('analysisStatus', 'Searching web sources with Exa AI...');
+        console.log('Starting Exa research...');
         
         const exaResults = await searchWithExa(event.title);
-        console.log(`✅ Found ${exaResults.length} sources`);
+        console.log(`Found ${exaResults.length} sources`);
         
         // Display sources immediately
         displaySources(exaResults);
         
         // STEP 2: Stream analysis from Claude via Puter.js
-        updateStatus('analysisStatus', '🤖 Analyzing with Claude AI (streaming)...');
-        console.log('🤖 Starting Claude streaming analysis...');
+        updateStatus('analysisStatus', 'Analyzing with Claude AI (streaming)...');
+        console.log('Starting Claude streaming analysis...');
         
         await streamClaudeAnalysis(event, exaResults);
         
     } catch (error) {
-        console.error('❌ Analysis error:', error);
+        console.error('Analysis error:', error);
         document.getElementById('rationaleText').innerHTML = `
             <span style="color: #ef4444;">Analysis failed: ${error.message}</span><br>
             <span style="color: #6b7280; font-size: 13px;">Please check console for details.</span>
@@ -125,7 +125,7 @@ async function streamClaudeAnalysis(event, exaResults) {
         displayPredictions(analysis.predictions);
         displayModelInsight(analysis.insight);
         
-        updateStatus('analysisStatus', '✅ Analysis complete');
+        updateStatus('analysisStatus', 'Analysis complete');
         setTimeout(() => {
             document.getElementById('analysisStatus').style.display = 'none';
         }, 2000);
