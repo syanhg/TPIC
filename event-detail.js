@@ -36,30 +36,35 @@ async function loadEventData() {
 
 async function performAdvancedAnalysis(event) {
     try {
-        // Step 1: Show thinking phase
+        // Step 1: Show thinking phase (instant)
         showThinkingPhase(event);
         
-        // Step 2: Show searching phase
-        await showSearchingPhase(event);
+        // Step 2: Show searching phase with shimmer (100ms delay)
+        setTimeout(() => showSearchingPhase(event), 100);
         
-        // Step 3: Conduct comprehensive web research
-        const exaResults = await searchWithExa(event.title, 15);
-        console.log(`Found ${exaResults.length} sources for analysis`);
+        // Step 3: Start web research in parallel (don't wait)
+        const searchPromise = searchWithExa(event.title, 12);
         
-        // Step 4: Show reviewing phase
-        showReviewingPhase(exaResults);
-        
-        // Display sources in sidebar
-        displaySources(exaResults);
-        
-        // Step 5: Advanced multi-stage Claude analysis
-        await streamAdvancedAnalysis(event, exaResults);
-        
-        // Hide status after complete
-        setTimeout(() => {
-            const statusEl = document.getElementById('analysisStatus');
-            if (statusEl) statusEl.style.display = 'none';
-        }, 3000);
+        // Step 4: Show reviewing phase after 800ms
+        setTimeout(async () => {
+            const exaResults = await searchPromise;
+            console.log(`Found ${exaResults.length} sources for analysis`);
+            
+            // Show reviewing with shimmer effect
+            showReviewingPhase(exaResults);
+            
+            // Display sources in sidebar
+            displaySources(exaResults);
+            
+            // Step 5: Start Claude analysis immediately
+            await streamAdvancedAnalysis(event, exaResults);
+            
+            // Hide status after complete
+            setTimeout(() => {
+                const statusEl = document.getElementById('analysisStatus');
+                if (statusEl) statusEl.style.display = 'none';
+            }, 2000);
+        }, 800);
         
     } catch (error) {
         console.error('Analysis error:', error);
@@ -71,14 +76,11 @@ async function performAdvancedAnalysis(event) {
 
 function showThinkingPhase(event) {
     const thinkingContent = document.getElementById('thinkingContent');
-    const eventIntel = extractEventIntelligence(event.title);
-    
     let thinkingText = `Predicting the future trajectory of "${event.title}" based on current trends and analyses.`;
-    
     thinkingContent.textContent = thinkingText;
 }
 
-async function showSearchingPhase(event) {
+function showSearchingPhase(event) {
     // Show searching section
     const searchingSection = document.getElementById('searchingSection');
     searchingSection.style.display = 'block';
@@ -89,24 +91,26 @@ async function showSearchingPhase(event) {
     // Generate intelligent search queries based on event type
     const queries = generateSearchQueries(event, eventIntel);
     
-    // Display queries one by one with delay
-    for (let i = 0; i < queries.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        const queryEl = document.createElement('div');
-        queryEl.className = 'search-query';
-        queryEl.innerHTML = `
-            <svg class="search-icon-small" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <span>${escapeHtml(queries[i])}</span>
-        `;
-        searchQueries.appendChild(queryEl);
-    }
-    
-    // Add small delay before moving to next phase
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Display all queries instantly with shimmer
+    queries.forEach((query, i) => {
+        setTimeout(() => {
+            const queryEl = document.createElement('div');
+            queryEl.className = 'search-query shimmer-active';
+            queryEl.innerHTML = `
+                <svg class="search-icon-small" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <span>${escapeHtml(query)}</span>
+            `;
+            searchQueries.appendChild(queryEl);
+            
+            // Remove shimmer after 1.5s
+            setTimeout(() => {
+                queryEl.classList.remove('shimmer-active');
+            }, 1500);
+        }, i * 150); // Stagger by 150ms
+    });
 }
 
 function generateSearchQueries(event, eventIntel) {
@@ -144,47 +148,54 @@ function showReviewingPhase(exaResults) {
     reviewingSection.style.display = 'block';
     reviewingLabel.textContent = 'sources';
     
-    // Show top 6 sources
+    // Show top 6 sources with staggered shimmer
     const topSources = exaResults.slice(0, 6);
     
     topSources.forEach((source, index) => {
-        const domain = new URL(source.url).hostname.replace('www.', '');
-        const domainName = domain.split('.')[0];
-        
-        const sourceEl = document.createElement('div');
-        sourceEl.className = 'source-item';
-        
-        // Determine favicon style
-        let faviconClass = 'default';
-        let faviconText = domainName.charAt(0).toUpperCase();
-        
-        if (domain.includes('youtube')) {
-            faviconClass = 'youtube';
-            faviconText = '▶';
-        } else if (domain.includes('gizmodo')) {
-            faviconClass = 'gizmodo';
-            faviconText = 'G';
-        } else if (domain.includes('thestreet')) {
-            faviconClass = 'thestreet';
-            faviconText = '₿';
-        } else if (domain.includes('trading')) {
-            faviconClass = 'tradingkey';
-            faviconText = '⚡';
-        }
-        
-        sourceEl.innerHTML = `
-            <div class="source-favicon ${faviconClass}">${faviconText}</div>
-            <div class="source-info">
-                <span class="source-title">${escapeHtml(source.title.substring(0, 60))}${source.title.length > 60 ? '...' : ''}</span>
-                <div class="source-domain">${escapeHtml(domainName)}</div>
-            </div>
-        `;
-        
-        reviewingSources.appendChild(sourceEl);
+        setTimeout(() => {
+            const domain = new URL(source.url).hostname.replace('www.', '');
+            const domainName = domain.split('.')[0];
+            
+            const sourceEl = document.createElement('div');
+            sourceEl.className = 'source-item shimmer-active';
+            
+            // Determine favicon style
+            let faviconClass = 'default';
+            let faviconText = domainName.charAt(0).toUpperCase();
+            
+            if (domain.includes('youtube')) {
+                faviconClass = 'youtube';
+                faviconText = '▶';
+            } else if (domain.includes('gizmodo')) {
+                faviconClass = 'gizmodo';
+                faviconText = 'G';
+            } else if (domain.includes('thestreet')) {
+                faviconClass = 'thestreet';
+                faviconText = '₿';
+            } else if (domain.includes('trading')) {
+                faviconClass = 'tradingkey';
+                faviconText = '⚡';
+            }
+            
+            sourceEl.innerHTML = `
+                <div class="source-favicon ${faviconClass}">${faviconText}</div>
+                <div class="source-info">
+                    <span class="source-title">${escapeHtml(source.title.substring(0, 60))}${source.title.length > 60 ? '...' : ''}</span>
+                    <div class="source-domain">${escapeHtml(domainName)}</div>
+                </div>
+            `;
+            
+            reviewingSources.appendChild(sourceEl);
+            
+            // Remove shimmer after animation completes
+            setTimeout(() => {
+                sourceEl.classList.remove('shimmer-active');
+            }, 1800);
+        }, index * 120); // Stagger by 120ms for smoother appearance
     });
 }
 
-async function searchWithExa(query, numResults = 15) {
+async function searchWithExa(query, numResults = 12) {
     try {
         const response = await fetch('https://api.exa.ai/search', {
             method: 'POST',
@@ -198,7 +209,7 @@ async function searchWithExa(query, numResults = 15) {
                 useAutoprompt: true,
                 type: 'neural',
                 contents: {
-                    text: { maxCharacters: 2000 }
+                    text: { maxCharacters: 1500 } // Reduced for faster response
                 }
             })
         });
@@ -251,11 +262,6 @@ async function streamAdvancedAnalysis(event, exaResults) {
         console.error('Claude error:', error);
         throw error;
     }
-}
-
-function updateStatus(message) {
-    // No longer needed with Perplexity-style UI
-    console.log('Status:', message);
 }
 
 function extractEventIntelligence(title) {
@@ -314,16 +320,15 @@ function extractEventIntelligence(title) {
 }
 
 function buildAdvancedAnalysisPrompt(event, exaResults, eventIntel) {
-    // Build comprehensive source context (minimum 10 sources) - MIRAI methodology
-    const topSources = exaResults.slice(0, Math.max(12, exaResults.length));
+    // Build comprehensive source context - optimized for speed
+    const topSources = exaResults.slice(0, 10); // Reduced to 10 for faster processing
     const sources = topSources.map((result, i) => {
         const sourceNum = i + 1;
         const cleanText = (result.text || '').replace(/\n+/g, ' ').trim();
         return `SOURCE ${sourceNum}: "${result.title}"
 Publisher: ${new URL(result.url).hostname}
 Date: ${result.publishedDate || 'Recent'}
-Reliability: ${assessSourceReliability(result.url)}
-Key Content: ${cleanText.substring(0, 1500)}
+Key Content: ${cleanText.substring(0, 1000)}
 ---`;
     }).join('\n\n');
     
@@ -332,92 +337,24 @@ Key Content: ${cleanText.substring(0, 1500)}
         entityGuidance = `\nOUTCOMES TO PREDICT: ${eventIntel.entities.join(' vs ')}`;
     }
     
-    // Advanced prompt based on MIRAI research paper methodology with ReAct framework
-    return `You are a professional forecasting analyst using rigorous statistical methods and multi-source evidence synthesis. Follow the MIRAI benchmark methodology for temporal reasoning.
+    // Streamlined prompt for faster response
+    return `You are a professional forecasting analyst. Analyze this event using the sources provided and generate predictions.
 
-CRITICAL REQUIREMENTS (MIRAI Framework):
-✓ MANDATORY: You MUST cite at least ${Math.min(topSources.length, 10)} different sources by exact title
-✓ EVERY major claim must reference specific SOURCE by number and exact title
-✓ Use Bayesian updating: show how each source changes your probability estimate
-✓ Provide quantitative base rates from historical data
-✓ Calculate weighted probability based on source reliability and recency
-✓ Show statistical confidence intervals for predictions
-✓ Use temporal reasoning to account for time-decay of information
-
-EVENT ANALYSIS:
+EVENT:
 Title: ${event.title}
 Type: ${eventIntel.type}${entityGuidance}
 Context: ${eventIntel.context}
-Market Data: Volume ${event.volume}, 24h Vol ${event.volume24h}, Liquidity ${event.liquidity}
-Closes: ${event.closeDate}
 
-AVAILABLE SOURCES (${topSources.length} verified sources):
+SOURCES (${topSources.length} verified):
 ${sources}
 
-═══════════════════════════════════════════════════════════
-ANALYSIS METHODOLOGY - Follow MIRAI ReAct Framework:
-═══════════════════════════════════════════════════════════
+INSTRUCTIONS:
+1. Cite at least ${Math.min(topSources.length, 8)} sources by exact title
+2. Use Bayesian reasoning to update probabilities
+3. Provide statistical confidence intervals
+4. Show your reasoning step-by-step
 
-**STEP 1: Base Rate Analysis (Historical Prior)**
-Establish the baseline probability using:
-- Historical frequency of similar ${eventIntel.type} events
-- Domain-specific base rates for "${event.title}" type scenarios
-- Reference class forecasting from past analogous events
-REQUIRED: State your starting prior probability: "Base rate: X%" with historical justification
-
-**STEP 2: Multi-Source Evidence Synthesis (Bayesian Updating)**
-Systematically evaluate EACH source with Think-Act-Observe methodology:
-
-SOURCE 1 Analysis:
-- Citation: [Quote exact title from SOURCE 1]
-- Key Finding: [Specific evidence]
-- Reliability Weight: [High/Medium/Low based on publisher]
-- Bayesian Update: "Prior X% → Updated Y% because [specific reasoning]"
-- Confidence Impact: [How this affects uncertainty]
-
-SOURCE 2 Analysis:
-- Citation: [Quote exact title from SOURCE 2]
-- Key Finding: [Specific evidence that agrees/contradicts SOURCE 1]
-- Cross-validation: [Does this corroborate or conflict?]
-- Bayesian Update: "Prior Y% → Updated Z% because [specific reasoning]"
-
-Continue through SOURCE 3, 4, 5, 6, 7, 8, 9, 10+ with the SAME format.
-MANDATORY: You must show probability updates for at least ${Math.min(topSources.length, 10)} sources.
-
-**STEP 3: Statistical Probability Synthesis**
-After processing all sources:
-- Final Probability Calculation: [Show weighted average formula]
-- Confidence Interval: [X% to Y% with Z% confidence]
-- Consensus Strength: [How much do sources agree? Measure: X/10 sources support primary outcome]
-- Outlier Analysis: [Which sources diverge and why?]
-- Information Quality Score: [Rate 1-10 based on source reliability, recency, sample size]
-
-**STEP 4: Quantitative Risk Assessment**
-Best Case (P=X%): [Describe scenario, cite supporting sources]
-Base Case (P=Y%): [Most likely scenario, cite supporting sources]  
-Worst Case (P=Z%): [Describe scenario, cite supporting sources]
-Where X + Y + Z = 100%
-
-**STEP 5: Temporal Analysis & Trend Direction**
-- Time until event: [Calculate days remaining]
-- Momentum analysis: [Is probability increasing or decreasing over time?]
-- Information velocity: [Are new sources adding clarity or uncertainty?]
-- Expected probability shift: [How might this change as event approaches?]
-- Key catalysts to monitor: [What could change the forecast?]
-
-**STEP 6: Statistical Indicators**
-- Trend Direction: [Upward/Downward/Stable with ±X% per week]
-- Volatility: [σ = X%, indicating uncertainty level]
-- Market Efficiency: [Does volume/liquidity suggest informed traders?]
-- Sentiment Analysis: [Aggregate tone across sources: X% positive, Y% negative]
-
-**STEP 7: Confidence & Uncertainty Quantification**
-- Data Quality: [High/Medium/Low - based on source count and reliability]
-- Source Agreement: [Strong/Moderate/Weak - X% consensus]
-- Information Completeness: [X% of key factors covered]
-- Overall Confidence: [High/Medium/Low with numerical score]
-- Key Unknowns: [List top 3 factors that could change prediction]
-- Black Swan Risks: [Low-probability, high-impact scenarios]
+Analyze the sources, cite them explicitly, and provide your final predictions in this JSON format at the end:
 
 \`\`\`json
 {
@@ -425,81 +362,22 @@ Where X + Y + Z = 100%
     {
       "outcome": "${eventIntel.entities[0] || 'Primary Outcome'}", 
       "probability": 0.XX,
-      "confidence_interval": [0.XX, 0.XX],
       "confidence": "High|Medium|Low",
       "key_drivers": ["Driver 1 (SOURCE X)", "Driver 2 (SOURCE Y)"]
     },
     {
       "outcome": "${eventIntel.entities[1] || 'Alternative Outcome'}", 
       "probability": 0.XX,
-      "confidence_interval": [0.XX, 0.XX],
       "confidence": "High|Medium|Low",
-      "key_drivers": ["Driver 1 (SOURCE Z)", "Driver 2 (SOURCE W)"]
+      "key_drivers": ["Driver 1", "Driver 2"]
     }
   ],
-  "methodology": {
-    "base_rate": 0.XX,
-    "sources_analyzed": ${topSources.length},
-    "bayesian_updates": ${Math.min(topSources.length, 10)},
-    "consensus_strength": 0.XX
-  },
-  "insight": "Single most critical factor: [X from SOURCE Y] makes [outcome] most likely",
-  "confidence": "High|Medium|Low",
-  "information_quality": 0.XX,
-  "key_uncertainty": "Primary risk: [specific factor that could change outcome]"
+  "insight": "Most critical factor driving the prediction",
+  "confidence": "High|Medium|Low"
 }
 \`\`\`
 
-═══════════════════════════════════════════════════════════
-MANDATORY CHECKLIST - Verify before submitting:
-═══════════════════════════════════════════════════════════
-✓ Cited at least ${Math.min(topSources.length, 10)} sources by EXACT title
-✓ Showed Bayesian probability updates for each major source  
-✓ Provided base rate with historical justification
-✓ Calculated confidence intervals, not just point estimates
-✓ Quantified source agreement and consensus strength
-✓ Included temporal trend analysis  
-✓ Listed specific uncertainties and risk factors
-✓ All probabilities sum to exactly 1.0
-✓ Used concrete numbers (not vague terms like "likely")
-✓ Explained statistical reasoning for each probability shift
-
-QUALITY STANDARDS:
-- Every claim must trace back to a numbered SOURCE by exact title
-- Use "According to [SOURCE X title], ..." format for attribution
-- When sources conflict, explicitly state: "SOURCE X says [A] while SOURCE Y says [B], weighting toward X because [reliability reason]"
-- Probability updates must be logical and mathematically sound
-- Final prediction must be defensible using Bayesian reasoning
-
-Begin your analysis now, following ALL steps above. This is a rigorous forecasting task requiring statistical precision and exhaustive source documentation.`;
-}
-
-function assessSourceReliability(url) {
-    const domain = new URL(url).hostname.toLowerCase();
-    
-    // High reliability sources
-    if (domain.includes('reuters') || domain.includes('apnews') || 
-        domain.includes('bloomberg') || domain.includes('ft.com') ||
-        domain.includes('wsj.com') || domain.includes('economist.com')) {
-        return 'High (Tier 1 news)';
-    }
-    
-    // Medium-high reliability
-    if (domain.includes('nytimes') || domain.includes('washingtonpost') ||
-        domain.includes('cnn.com') || domain.includes('bbc.com') ||
-        domain.includes('theguardian') || domain.includes('forbes')) {
-        return 'Medium-High (Major news)';
-    }
-    
-    // Medium reliability
-    if (domain.includes('espn') || domain.includes('sportingnews') ||
-        domain.includes('techcrunch') || domain.includes('wired') ||
-        domain.includes('verge') || domain.includes('arstechnica')) {
-        return 'Medium (Specialist news)';
-    }
-    
-    // Lower reliability
-    return 'Medium-Low (Verify claims)';
+Begin your analysis now with clear source citations.`;
 }
 
 function parseStreamedResponse(text) {
@@ -513,9 +391,7 @@ function parseStreamedResponse(text) {
                     { outcome: 'No', probability: 0.5, confidence: 'Medium' }
                 ],
                 insight: parsed.insight || 'Analysis complete',
-                confidence: parsed.confidence || 'Medium',
-                base_rate: parsed.base_rate || 0.5,
-                key_uncertainty: parsed.key_uncertainty || 'Multiple factors'
+                confidence: parsed.confidence || 'Medium'
             };
         }
     } catch (error) {
@@ -542,7 +418,6 @@ function formatAnalysisText(text) {
         if (p.includes('<h4>')) {
             return p;
         }
-        // Preserve line breaks within paragraphs
         return `<p>${p.replace(/\n/g, '<br>')}</p>`;
     }).join('');
 }
@@ -563,7 +438,7 @@ function displayModelInsight(insight) {
 
 function displaySources(exaResults) {
     const container = document.getElementById('sourcesList');
-    const sources = exaResults.slice(0, 15);
+    const sources = exaResults.slice(0, 12);
     
     document.getElementById('totalSources').textContent = sources.length;
     
@@ -673,14 +548,12 @@ function generateProbabilityTrend(finalProb, points) {
     
     for (let i = 0; i < points; i++) {
         const progress = i / (points - 1);
-        // Smooth sigmoid-like curve
         const smoothing = Math.pow(progress, 0.7);
         const noise = (Math.random() - 0.5) * 3;
         const value = baseProb + (finalProb - baseProb) * smoothing + noise;
         data.push(parseFloat(Math.max(0, Math.min(100, value)).toFixed(1)));
     }
     
-    // Ensure last point is exact
     data[points - 1] = parseFloat(finalProb.toFixed(1));
     return data;
 }
