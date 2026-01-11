@@ -4,21 +4,8 @@ const eventSlug = urlParams.get('event');
 
 document.addEventListener('DOMContentLoaded', () => {
     setupSearchFunctionality();
-    setupScrollEffect();
     loadEventData();
 });
-
-function setupScrollEffect() {
-    const topBar = document.querySelector('.top-bar');
-    
-    window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) {
-            topBar.classList.add('scrolled');
-        } else {
-            topBar.classList.remove('scrolled');
-        }
-    });
-}
 
 function setupSearchFunctionality() {
     const searchInput = document.getElementById('searchInput');
