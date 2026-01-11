@@ -37,15 +37,15 @@ async function loadEventData() {
 
 async function performAdvancedAnalysis(event) {
     try {
-        // Step 1: Comprehensive web research using Serper (MINIMUM 10 sources required)
-        updateStatus('Conducting comprehensive Google Search research...');
-        const serperResults = await searchWithSerper(event.title, 15);
+        // Step 1: Comprehensive web research using Claude's web search (MINIMUM 10 sources required)
+        updateStatus('Conducting comprehensive web research...');
+        const searchResults = await searchWithSerper(event.title, 15);
         
-        console.log(`Found ${serperResults.length} sources for analysis`);
+        console.log(`Found ${searchResults.length} sources for analysis`);
         
         // CRITICAL: Must have at least 10 sources to proceed
-        if (serperResults.length < 10) {
-            const errorMsg = `INSUFFICIENT SOURCES: Found only ${serperResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
+        if (searchResults.length < 10) {
+            const errorMsg = `INSUFFICIENT SOURCES: Found only ${searchResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
             updateStatus(errorMsg);
             document.getElementById('analysisContent').innerHTML = `
                 <div style="padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
@@ -61,11 +61,11 @@ async function performAdvancedAnalysis(event) {
         }
         
         // Display sources immediately
-        displaySources(serperResults);
+        displaySources(searchResults);
         
         // Step 2: Advanced multi-stage analysis with research paper methodology
         updateStatus('Performing advanced statistical analysis with AI using Bayesian inference...');
-        await streamAdvancedAnalysis(event, serperResults);
+        await streamAdvancedAnalysis(event, searchResults);
         
     } catch (error) {
         console.error('Analysis error:', error);
@@ -81,54 +81,76 @@ async function performAdvancedAnalysis(event) {
 
 async function searchWithSerper(query, numResults = 15) {
     try {
-        // Serper API - fastest SERP API with 2,500 free searches/month
-        const response = await fetch('https://google.serper.dev/search', {
-            method: 'POST',
+        // Using Claude's built-in web search tool instead of external API
+        // This is more reliable and doesn't require API keys
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
             headers: {
-                'X-API-KEY': '4e0fb5f1c31c0b4ab89c0b7c724b8e5fcfe4e5f1',
-                'Content-Type': 'application/json'
+                "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                q: query,
-                num: numResults,
-                gl: 'us',
-                hl: 'en'
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 2000,
+                tools: [{
+                    "type": "web_search_20250305",
+                    "name": "web_search"
+                }],
+                messages: [{
+                    role: "user",
+                    content: `Search the web for: "${query}". Find at least 15 diverse, credible sources including news articles, analysis, and data. Return only a JSON array of results with this exact format:
+[
+  {
+    "title": "Article title",
+    "url": "https://example.com",
+    "snippet": "Key excerpt or summary",
+    "date": "2025-01-11"
+  }
+]
+
+Focus on recent sources and ensure high relevance to the query.`
+                }]
             })
         });
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(`Serper API error: ${errorData.message || response.statusText}`);
+            throw new Error(`Search API error: ${errorData.error?.message || response.statusText}`);
         }
         
         const data = await response.json();
         const results = [];
         
-        // Extract organic results
-        if (data.organic && Array.isArray(data.organic)) {
-            data.organic.forEach(result => {
-                results.push({
-                    title: result.title || 'Untitled',
-                    url: result.link || '',
-                    text: result.snippet || '',
-                    publishedDate: result.date || new Date().toISOString().split('T')[0],
-                    position: result.position || 0
-                });
-            });
-        }
-        
-        // Extract news results if available
-        if (data.news && Array.isArray(data.news)) {
-            data.news.forEach(result => {
-                results.push({
-                    title: result.title || 'Untitled',
-                    url: result.link || '',
-                    text: result.snippet || '',
-                    publishedDate: result.date || new Date().toISOString().split('T')[0],
-                    position: result.position || 0,
-                    isNews: true
-                });
-            });
+        // Extract search results from Claude's web search tool
+        if (data.content && Array.isArray(data.content)) {
+            for (const block of data.content) {
+                if (block.type === 'tool_use' && block.name === 'web_search') {
+                    // Tool use block - continue to next
+                    continue;
+                }
+                if (block.type === 'text') {
+                    try {
+                        // Try to parse JSON from text response
+                        const text = block.text.trim();
+                        const jsonMatch = text.match(/\[[\s\S]*\]/);
+                        if (jsonMatch) {
+                            const parsedResults = JSON.parse(jsonMatch[0]);
+                            if (Array.isArray(parsedResults)) {
+                                parsedResults.forEach(result => {
+                                    results.push({
+                                        title: result.title || 'Untitled',
+                                        url: result.url || '',
+                                        text: result.snippet || result.content || '',
+                                        publishedDate: result.date || new Date().toISOString().split('T')[0],
+                                        isNews: result.type === 'news'
+                                    });
+                                });
+                            }
+                        }
+                    } catch (parseError) {
+                        console.warn('Could not parse search results:', parseError);
+                    }
+                }
+            }
         }
         
         // Deduplicate by URL
@@ -139,13 +161,13 @@ async function searchWithSerper(query, numResults = 15) {
         return uniqueResults.slice(0, numResults);
         
     } catch (error) {
-        console.error('Serper search error:', error);
+        console.error('Web search error:', error);
         throw error;
     }
 }
 
-async function streamAdvancedAnalysis(event, serperResults) {
-    const prompt = buildAdvancedAnalysisPrompt(event, serperResults);
+async function streamAdvancedAnalysis(event, searchResults) {
+    const prompt = buildAdvancedAnalysisPrompt(event, searchResults);
     
     try {
         const analysisEl = document.getElementById('analysisContent');
@@ -194,9 +216,9 @@ async function streamAdvancedAnalysis(event, serperResults) {
     }
 }
 
-function buildAdvancedAnalysisPrompt(event, serperResults) {
+function buildAdvancedAnalysisPrompt(event, searchResults) {
     // Build comprehensive source context (minimum 10 sources)
-    const topSources = serperResults.slice(0, Math.max(10, serperResults.length));
+    const topSources = searchResults.slice(0, Math.max(10, searchResults.length));
     const sources = topSources.map((result, i) => 
         `[SOURCE ${i + 1}] ${result.title}
 URL: ${result.url}
@@ -223,7 +245,7 @@ Market Data: Volume ${event.volume}, 24h Vol ${event.volume24h}, Liquidity ${eve
 Closes: ${event.closeDate}
 Current Status: ${event.active ? 'Active Market' : 'Closed Market'}
 
-AVAILABLE SOURCES (${topSources.length} high-quality Google Search results):
+AVAILABLE SOURCES (${topSources.length} high-quality web search results):
 ${sources}
 
 ANALYSIS FRAMEWORK (MIRAI Research Methodology):
@@ -400,9 +422,9 @@ function displayAnalysisMetrics(analysis) {
         analysis.key_uncertainty ? analysis.key_uncertainty.substring(0, 30) + '...' : '--';
 }
 
-function displaySources(serperResults) {
+function displaySources(searchResults) {
     const container = document.getElementById('sourcesList');
-    const sources = serperResults.slice(0, 15);
+    const sources = searchResults.slice(0, 15);
     
     document.getElementById('totalSources').textContent = sources.length;
     
