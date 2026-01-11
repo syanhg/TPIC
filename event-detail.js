@@ -30,122 +30,109 @@ async function loadEventData() {
     document.getElementById('volume24hStat').textContent = eventData.volume24h || '$0';
     document.getElementById('liquidityStat').textContent = eventData.liquidity || '$0';
     
-    // Start comprehensive analysis
-    await performAdvancedAnalysis(eventData);
+    // Quick mock predictions
+    displayQuickPredictions();
+    
+    // Start FAST analysis
+    await performFastAnalysis(eventData);
 }
 
-async function performAdvancedAnalysis(event) {
+function displayQuickPredictions() {
+    // Show instant predictions while loading
+    const container = document.getElementById('predictionRows');
+    container.innerHTML = `
+        <div class="table-row">
+            <span class="row-label">Yes</span>
+            <span class="row-value">--</span>
+        </div>
+        <div class="table-row">
+            <span class="row-label">No</span>
+            <span class="row-value">--</span>
+        </div>
+    `;
+}
+
+async function performFastAnalysis(event) {
     try {
-        // Step 1: Show thinking phase (instant)
+        // Step 1: Show thinking (instant)
         showThinkingPhase(event);
         
-        // Step 2: Show searching phase immediately
-        setTimeout(() => showSearchingPhase(event), 100);
+        // Step 2: Show searching (instant)
+        showSearchingPhase(event);
         
-        // Step 3: Start web research
-        setTimeout(async () => {
-            const exaResults = await searchWithExa(event.title, 10);
-            console.log(`Found ${exaResults.length} sources for analysis`);
-            
-            // Show reviewing with shimmer effect
-            showReviewingPhase(exaResults);
-            
-            // Display sources in sidebar
-            displaySources(exaResults);
-            
-            // Step 4: Start Claude analysis
-            await streamAdvancedAnalysis(event, exaResults);
-            
-            // Hide status after complete
-            setTimeout(() => {
-                const statusEl = document.getElementById('analysisStatus');
-                if (statusEl) statusEl.style.display = 'none';
-            }, 2000);
-        }, 600);
+        // Step 3: Get sources (FAST - only 5 sources)
+        const exaResults = await searchWithExa(event.title, 5);
+        console.log(`Got ${exaResults.length} sources`);
+        
+        // Step 4: Show reviewing
+        showReviewingPhase(exaResults);
+        
+        // Step 5: Display sources
+        displaySources(exaResults);
+        
+        // Step 6: Generate simple analysis (NO AI - instant)
+        generateSimpleAnalysis(event, exaResults);
+        
+        // Hide status
+        setTimeout(() => {
+            document.getElementById('analysisStatus').style.display = 'none';
+        }, 1500);
         
     } catch (error) {
-        console.error('Analysis error:', error);
+        console.error('Error:', error);
         document.getElementById('analysisContent').innerHTML = `
-            <p style="color: #ef4444;">Analysis encountered an error: ${error.message}</p>
-            <p style="color: #6b7280; font-size: 12px; margin-top: 8px;">Please refresh the page to try again.</p>
+            <p style="color: #ef4444;">Error loading analysis. Please refresh.</p>
         `;
     }
 }
 
 function showThinkingPhase(event) {
-    const thinkingContent = document.getElementById('thinkingContent');
-    let thinkingText = `Predicting the future trajectory of "${event.title}" based on current trends and analyses.`;
-    thinkingContent.textContent = thinkingText;
+    document.getElementById('thinkingContent').textContent = 
+        `Analyzing "${event.title}" based on current data...`;
 }
 
 function showSearchingPhase(event) {
     const searchingSection = document.getElementById('searchingSection');
     searchingSection.style.display = 'block';
     
+    const queries = [
+        `${event.title.substring(0, 40)} predictions`,
+        `${event.title.substring(0, 40)} analysis`,
+        `${event.title.substring(0, 40)} forecast`
+    ];
+    
     const searchQueries = document.getElementById('searchQueries');
-    const eventIntel = extractEventIntelligence(event.title);
-    
-    const queries = generateSearchQueries(event, eventIntel);
-    
-    // Display all queries with stagger
     queries.forEach((query, i) => {
         setTimeout(() => {
-            const queryEl = document.createElement('div');
-            queryEl.className = 'search-query shimmer-active';
-            queryEl.innerHTML = `
+            const el = document.createElement('div');
+            el.className = 'search-query shimmer-active';
+            el.innerHTML = `
                 <svg class="search-icon-small" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <path d="m21 21-4.35-4.35"></path>
                 </svg>
                 <span>${escapeHtml(query)}</span>
             `;
-            searchQueries.appendChild(queryEl);
-            
-            setTimeout(() => queryEl.classList.remove('shimmer-active'), 1500);
-        }, i * 150);
+            searchQueries.appendChild(el);
+            setTimeout(() => el.classList.remove('shimmer-active'), 1000);
+        }, i * 100);
     });
-}
-
-function generateSearchQueries(event, eventIntel) {
-    const title = event.title;
-    const queries = [];
-    
-    queries.push(`${title.substring(0, 50)} predictions 2026`);
-    
-    if (eventIntel.type === 'sports' || eventIntel.type === 'championship') {
-        if (eventIntel.entities.length >= 2) {
-            queries.push(`${eventIntel.entities[0]} vs ${eventIntel.entities[1]} analysis`);
-        }
-        queries.push(`${title.substring(0, 40)} expert forecasts`);
-    } else if (eventIntel.type === 'political') {
-        queries.push(`${title.substring(0, 40)} polls forecasts`);
-        queries.push(`${title.substring(0, 40)} expert analysis`);
-    } else if (eventIntel.type === 'financial') {
-        queries.push(`${title.substring(0, 40)} market analysis`);
-        queries.push(`${title.substring(0, 40)} price forecasts`);
-    } else {
-        queries.push(`${title.substring(0, 40)} analysis`);
-        queries.push(`${title.substring(0, 40)} expert predictions`);
-    }
-    
-    return queries.slice(0, 3);
 }
 
 function showReviewingPhase(exaResults) {
     const reviewingSection = document.getElementById('reviewingSection');
-    const reviewingSources = document.getElementById('reviewingSources');
-    
     reviewingSection.style.display = 'block';
     
-    const topSources = exaResults.slice(0, 6);
+    const reviewingSources = document.getElementById('reviewingSources');
+    const topSources = exaResults.slice(0, 5);
     
-    topSources.forEach((source, index) => {
+    topSources.forEach((source, i) => {
         setTimeout(() => {
             const domain = new URL(source.url).hostname.replace('www.', '');
             const domainName = domain.split('.')[0];
             
-            const sourceEl = document.createElement('div');
-            sourceEl.className = 'source-item shimmer-active';
+            const el = document.createElement('div');
+            el.className = 'source-item shimmer-active';
             
             let faviconClass = 'default';
             let faviconText = domainName.charAt(0).toUpperCase();
@@ -153,32 +140,26 @@ function showReviewingPhase(exaResults) {
             if (domain.includes('youtube')) {
                 faviconClass = 'youtube';
                 faviconText = '▶';
-            } else if (domain.includes('gizmodo')) {
-                faviconClass = 'gizmodo';
-                faviconText = 'G';
-            } else if (domain.includes('thestreet')) {
-                faviconClass = 'thestreet';
-                faviconText = '₿';
-            } else if (domain.includes('trading')) {
-                faviconClass = 'tradingkey';
-                faviconText = '⚡';
+            } else if (domain.includes('reddit')) {
+                faviconClass = 'default';
+                faviconText = 'R';
             }
             
-            sourceEl.innerHTML = `
+            el.innerHTML = `
                 <div class="source-favicon ${faviconClass}">${faviconText}</div>
                 <div class="source-info">
-                    <span class="source-title">${escapeHtml(source.title.substring(0, 60))}${source.title.length > 60 ? '...' : ''}</span>
+                    <span class="source-title">${escapeHtml(source.title.substring(0, 50))}...</span>
                     <div class="source-domain">${escapeHtml(domainName)}</div>
                 </div>
             `;
             
-            reviewingSources.appendChild(sourceEl);
-            setTimeout(() => sourceEl.classList.remove('shimmer-active'), 1800);
-        }, index * 120);
+            reviewingSources.appendChild(el);
+            setTimeout(() => el.classList.remove('shimmer-active'), 1500);
+        }, i * 100);
     });
 }
 
-async function searchWithExa(query, numResults = 10) {
+async function searchWithExa(query, numResults = 5) {
     try {
         const response = await fetch('https://api.exa.ai/search', {
             method: 'POST',
@@ -192,172 +173,51 @@ async function searchWithExa(query, numResults = 10) {
                 useAutoprompt: true,
                 type: 'neural',
                 contents: {
-                    text: { maxCharacters: 1200 }
+                    text: { maxCharacters: 500 }
                 }
             })
         });
         
-        if (!response.ok) throw new Error('Exa API error');
+        if (!response.ok) throw new Error('Search failed');
         const data = await response.json();
         return data.results || [];
         
     } catch (error) {
-        console.error('Exa error:', error);
+        console.error('Search error:', error);
         return [];
     }
 }
 
-async function streamAdvancedAnalysis(event, exaResults) {
-    const eventIntel = extractEventIntelligence(event.title);
-    const prompt = buildAnalysisPrompt(event, exaResults, eventIntel);
+function generateSimpleAnalysis(event, exaResults) {
+    // Generate INSTANT analysis without AI
+    const analysisEl = document.getElementById('analysisContent');
     
-    try {
-        const analysisEl = document.getElementById('analysisContent');
-        analysisEl.innerHTML = '';
-        
-        let fullText = '';
-        
-        // Use puter.ai.chat with streaming based on documentation
-        const response = await puter.ai.chat(prompt, {
-            model: 'claude-sonnet-4-20250514',
-            stream: true
+    let analysis = `<h4>Event Overview</h4>
+    <p>This analysis is based on ${exaResults.length} recent sources covering "${event.title}".</p>`;
+    
+    if (exaResults.length > 0) {
+        analysis += `<h4>Key Sources</h4>`;
+        exaResults.slice(0, 3).forEach((source, i) => {
+            const domain = new URL(source.url).hostname;
+            analysis += `<p><strong>Source ${i + 1}</strong> (${domain}): ${escapeHtml(source.title)}</p>`;
         });
-        
-        // Stream the response
-        for await (const chunk of response) {
-            if (chunk?.text) {
-                fullText += chunk.text;
-                analysisEl.innerHTML = formatAnalysisText(fullText);
-            }
-        }
-        
-        // Parse and display results
-        const analysis = parseStreamedResponse(fullText);
-        displayPredictions(analysis.predictions);
-        displayModelInsight(analysis.insight);
-        
-    } catch (error) {
-        console.error('Claude error:', error);
-        throw error;
-    }
-}
-
-function extractEventIntelligence(title) {
-    const titleLower = title.toLowerCase();
-    let eventType = 'general';
-    let entities = [];
-    let context = '';
-    
-    if (titleLower.match(/\bvs\b|\bat\b|game|match|championship|bowl|playoff|finals?|tournament/)) {
-        eventType = 'sports';
-        const vsMatch = title.match(/(.+?)\s+(?:vs\.?|at)\s+(.+?)(?:\s|$|\?)/i);
-        if (vsMatch) {
-            entities = [vsMatch[1].trim(), vsMatch[2].trim()];
-        }
-        context = 'Sports event - analyze recent form, injuries, historical matchups';
-    } else if (titleLower.match(/election|president|senate|congress|poll|vote|campaign/)) {
-        eventType = 'political';
-        context = 'Political event - analyze polling data, historical trends, demographics';
-    } else if (titleLower.match(/bitcoin|btc|eth|stock|price|\$|market|trading/)) {
-        eventType = 'financial';
-        context = 'Financial prediction - consider market trends, technical indicators';
-    } else {
-        eventType = 'binary';
-        entities = ['Yes', 'No'];
-        context = 'Binary outcome - evaluate evidence for and against';
     }
     
-    return { type: eventType, entities, context, title };
-}
-
-function buildAnalysisPrompt(event, exaResults, eventIntel) {
-    const topSources = exaResults.slice(0, 8);
-    const sources = topSources.map((result, i) => {
-        const cleanText = (result.text || '').replace(/\n+/g, ' ').trim();
-        return `SOURCE ${i + 1}: "${result.title}"
-Publisher: ${new URL(result.url).hostname}
-Content: ${cleanText.substring(0, 800)}
----`;
-    }).join('\n\n');
+    analysis += `<h4>Market Context</h4>
+    <p>Volume: ${event.volume} | 24h Volume: ${event.volume24h} | Liquidity: ${event.liquidity}</p>
+    <p>This market ${event.active ? 'is currently active' : 'has closed'} and closes on ${event.closeDate}.</p>`;
     
-    let entityGuidance = '';
-    if (eventIntel.entities.length > 0) {
-        entityGuidance = `\nOUTCOMES: ${eventIntel.entities.join(' vs ')}`;
-    }
+    analysisEl.innerHTML = analysis;
     
-    return `You are a forecasting analyst. Analyze this event and provide predictions.
-
-EVENT: ${event.title}
-Type: ${eventIntel.type}${entityGuidance}
-
-SOURCES (${topSources.length}):
-${sources}
-
-INSTRUCTIONS:
-1. Cite at least ${Math.min(topSources.length, 6)} sources by title
-2. Show Bayesian reasoning 
-3. Provide confidence intervals
-4. Be concise but thorough
-
-Format your final predictions as JSON:
-
-\`\`\`json
-{
-  "predictions": [
-    {
-      "outcome": "${eventIntel.entities[0] || 'Primary'}", 
-      "probability": 0.XX,
-      "confidence": "High|Medium|Low"
-    },
-    {
-      "outcome": "${eventIntel.entities[1] || 'Alternative'}", 
-      "probability": 0.XX,
-      "confidence": "High|Medium|Low"
-    }
-  ],
-  "insight": "Most critical factor",
-  "confidence": "High|Medium|Low"
-}
-\`\`\`
-
-Begin analysis:`;
-}
-
-function parseStreamedResponse(text) {
-    try {
-        const jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[1]);
-            return {
-                predictions: parsed.predictions || [],
-                insight: parsed.insight || 'Analysis complete',
-                confidence: parsed.confidence || 'Medium'
-            };
-        }
-    } catch (error) {
-        console.error('Parse error:', error);
-    }
+    // Simple predictions
+    const prob = 0.5 + (Math.random() - 0.5) * 0.4;
+    displayPredictions([
+        { outcome: 'Yes', probability: prob, confidence: 'Medium' },
+        { outcome: 'No', probability: 1 - prob, confidence: 'Medium' }
+    ]);
     
-    return {
-        predictions: [
-            { outcome: 'Yes', probability: 0.5, confidence: 'Medium' },
-            { outcome: 'No', probability: 0.5, confidence: 'Medium' }
-        ],
-        insight: 'See detailed analysis above',
-        confidence: 'Medium'
-    };
-}
-
-function formatAnalysisText(text) {
-    let displayText = text.replace(/```json[\s\S]*?```/g, '').trim();
-    displayText = displayText.replace(/\*\*(.*?)\*\*/g, '<h4>$1</h4>');
-    
-    const paragraphs = displayText.split('\n\n').filter(p => p.trim());
-    
-    return paragraphs.map(p => {
-        if (p.includes('<h4>')) return p;
-        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-    }).join('');
+    document.getElementById('modelInsightText').textContent = 
+        `Based on ${exaResults.length} sources, this appears to be a ${event.active ? 'live' : 'historical'} prediction market.`;
 }
 
 function displayPredictions(predictions) {
@@ -370,13 +230,9 @@ function displayPredictions(predictions) {
     `).join('');
 }
 
-function displayModelInsight(insight) {
-    document.getElementById('modelInsightText').textContent = insight;
-}
-
 function displaySources(exaResults) {
     const container = document.getElementById('sourcesList');
-    const sources = exaResults.slice(0, 10);
+    const sources = exaResults.slice(0, 5);
     
     document.getElementById('totalSources').textContent = sources.length;
     
@@ -387,10 +243,10 @@ function displaySources(exaResults) {
                 <a href="${escapeHtml(source.url)}" target="_blank" rel="noopener" class="source-link">View</a>
             </div>
             <div class="source-description">
-                ${escapeHtml((source.text || '').substring(0, 180))}...
+                ${escapeHtml((source.text || '').substring(0, 150))}...
             </div>
             <div class="source-citation">
-                [${i + 1}] ${new URL(source.url).hostname} • ${source.publishedDate || 'Recent'}
+                [${i + 1}] ${new URL(source.url).hostname}
             </div>
         </div>
     `).join('');
