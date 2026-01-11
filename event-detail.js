@@ -1,5 +1,6 @@
 const urlParams = new URLSearchParams(window.location.search);
 const eventSlug = urlParams.get('event');
+const MAX_ITERATIONS = 6; // Limit iterations for web performance
 
 document.addEventListener('DOMContentLoaded', () => {
     setupSearch();
@@ -30,34 +31,194 @@ async function loadEventData() {
     document.getElementById('volume24hStat').textContent = eventData.volume24h || '$0';
     document.getElementById('liquidityStat').textContent = eventData.liquidity || '$0';
     
-    // Start comprehensive analysis
-    await performAdvancedAnalysis(eventData);
+    // Initialize Agent Loop
+    await runMiraiAgent(eventData);
 }
 
-async function performAdvancedAnalysis(event) {
+// --- MIRAI AGENT CORE ---
+
+async function runMiraiAgent(event) {
+    const analysisEl = document.getElementById('analysisContent');
+    const statusEl = document.getElementById('analysisStatus');
+    const sourcesContainer = document.getElementById('sourcesList');
+    
+    analysisEl.innerHTML = '';
+    sourcesContainer.innerHTML = '';
+    
+    // 1. Initialize MIRAI Context
+    const eventIntel = extractEventIntelligence(event.title);
+    let conversationHistory = buildMiraiSystemPrompt(event, eventIntel);
+    let collectedSources = [];
+    
+    updateStatus('Agent initializing: Analyzing event structure...');
+
     try {
-        // Step 1: Comprehensive web research (minimum 10 sources)
-        updateStatus('Conducting comprehensive research across multiple sources...');
-        const exaResults = await searchWithExa(event.title, 15); // Request more sources
-        console.log(`Found ${exaResults.length} sources for analysis`);
+        if (typeof puter === 'undefined') throw new Error('Puter.js not loaded');
+
+        // 2. The ReAct Loop (Think -> Act -> Observe)
+        for (let i = 0; i < MAX_ITERATIONS; i++) {
+            
+            // Step 2a: THINK (Call LLM)
+            updateStatus(`Iteration ${i+1}/${MAX_ITERATIONS}: Reasoning...`);
+            
+            const response = await puter.ai.chat(conversationHistory, {
+                model: 'claude-3-5-sonnet',
+                stream: false
+            });
+            
+            const llmOutput = response.message.content;
+            conversationHistory += `\n${llmOutput}`; // Append to history
+            
+            // Visualize Thought Process
+            const thoughtMatch = llmOutput.match(/Thought:\s*(.*)/i);
+            if (thoughtMatch) {
+                appendLogToUI(`<strong>Thought ${i+1}:</strong> ${thoughtMatch[1]}`, 'thought');
+            }
+
+            // Step 2b: ACT (Parse Action)
+            // Regex to find "Action: function_name(args)" or "Final Answer:"
+            const actionMatch = llmOutput.match(/Action:\s*(.*)/i);
+            
+            if (actionMatch) {
+                const actionString = actionMatch[1].trim();
+                
+                // TERMINATION CONDITION: Agent is ready to predict
+                if (actionString.startsWith("Final Answer:") || actionString.includes("Final Answer")) {
+                    updateStatus('Finalizing prediction model...');
+                    const jsonStr = llmOutput.substring(llmOutput.indexOf('{'), llmOutput.lastIndexOf('}') + 1);
+                    const analysis = parseFinalJson(jsonStr, eventIntel);
+                    
+                    renderFinalResults(analysis, collectedSources);
+                    updateStatus('Analysis complete');
+                    setTimeout(() => { if(statusEl) statusEl.style.display = 'none'; }, 2000);
+                    return;
+                }
+
+                // Step 2c: EXECUTE (Run Tool)
+                updateStatus(`Executing tool: ${actionString.substring(0, 40)}...`);
+                appendLogToUI(`<strong>Action:</strong> ${actionString}`, 'action');
+                
+                const observation = await executeMiraiTool(actionString, collectedSources);
+                
+                // Step 2d: OBSERVE (Feed result back to Agent)
+                const observationText = `\nObservation: ${observation}\n`;
+                conversationHistory += observationText;
+                
+                // Update Sources UI if we found new ones
+                if (collectedSources.length > 0) {
+                    document.getElementById('sourcesCount').textContent = collectedSources.length;
+                    displaySources(collectedSources);
+                }
+                
+            } else {
+                // If the model rambles without an action, force a nudge
+                conversationHistory += `\nSystem Warning: You must output an 'Action:' or 'Final Answer:'.\n`;
+            }
+        }
         
-        // Display sources immediately
-        displaySources(exaResults);
-        
-        // Step 2: Advanced multi-stage Claude analysis with research paper methodology
-        updateStatus('Performing advanced statistical analysis with AI...');
-        await streamAdvancedAnalysis(event, exaResults);
-        
+        // Fallback if max iterations reached
+        throw new Error("Agent exceeded maximum iterations without a final answer.");
+
     } catch (error) {
-        console.error('Analysis error:', error);
-        document.getElementById('analysisContent').innerHTML = `
-            <p style="color: #000000;">Analysis encountered an error. Please refresh the page.</p>
-        `;
+        console.error('Agent Error:', error);
+        analysisEl.innerHTML += `<p style="color:red; margin-top:20px;">Agent Error: ${error.message}</p>`;
     }
 }
 
-async function searchWithExa(query, numResults = 15) {
+// --- TOOL EXECUTION LAYER ---
+
+async function executeMiraiTool(actionString, collectedSources) {
     try {
+        // Tool 1: get_news_articles (Simulated via Exa)
+        // Syntax: get_news_articles(keywords=["term1", "term2"])
+        if (actionString.includes('get_news_articles') || actionString.includes('search_news')) {
+            const match = actionString.match(/keywords=\[(.*?)\]/);
+            const queryRaw = match ? match[1].replace(/['"]/g, '') : actionString; // Fallback
+            
+            const results = await searchWithExa(queryRaw, 3);
+            
+            if (results.length === 0) return "No news found for these keywords.";
+            
+            // Store unique sources
+            results.forEach(r => {
+                if (!collectedSources.find(s => s.url === r.url)) {
+                    collectedSources.push(r);
+                }
+            });
+
+            // Return summarized context to Agent
+            return JSON.stringify(results.map(r => ({
+                date: r.publishedDate || 'Recent',
+                title: r.title,
+                snippet: r.text ? r.text.substring(0, 300) + "..." : "No text"
+            })));
+        }
+
+        // Tool 2: get_historical_precedents (Simulated via Exa with modified query)
+        if (actionString.includes('get_historical_precedents')) {
+            const match = actionString.match(/\(["'](.*?)["']\)/);
+            const topic = match ? match[1] : "similar events";
+            
+            const results = await searchWithExa(`history of ${topic} outcome statistics`, 2);
+            return `Historical Data found: ${JSON.stringify(results.map(r => r.title))}`;
+        }
+
+        return "Error: Function not found. Available functions: get_news_articles(keywords=[]), get_historical_precedents(topic_string).";
+
+    } catch (e) {
+        return `Tool Execution Error: ${e.message}`;
+    }
+}
+
+// --- MIRAI SYSTEM PROMPT ---
+
+function buildMiraiSystemPrompt(event, eventIntel) {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Adapted from MIRAI Appendix K.1.2 (ReAct Agent)
+    return `You are a Forecasting Agent using the MIRAI (Multi-Information FoRecasting Agent Interface) architecture.
+    
+    TASK: Forecast the outcome of the event: "${event.title}".
+    CURRENT DATE: ${today}
+    CONTEXT: ${eventIntel.context}
+    
+    You have access to the following Python-like tools:
+    1. get_news_articles(keywords=["term1", "term2"]) 
+       - Retrieves recent news, polls, and updates.
+    2. get_historical_precedents(topic_string) 
+       - Searches for similar past events to establish base rates.
+
+    INSTRUCTIONS:
+    1. Use an iterative 'Thought' -> 'Action' -> 'Observation' loop.
+    2. Do NOT guess. Use tools to gather evidence first.
+    3. Analyze 2-3 different angles (e.g., polls vs market sentiment).
+    4. When confident, output "Final Answer:" followed immediately by a JSON object.
+
+    FORMAT:
+    Thought: [Your reasoning about what data is missing or what to analyze next]
+    Action: [The function call, e.g., get_news_articles(keywords=["election polls"])]
+    
+    ... (Wait for Observation) ...
+
+    Action: Final Answer: {
+        "predictions": [
+            {"outcome": "Outcome A", "probability": 0.XX, "confidence": "High/Medium/Low"},
+            {"outcome": "Outcome B", "probability": 0.XX, "confidence": "High/Medium/Low"}
+        ],
+        "insight": "The single most critical factor found...",
+        "rationale": "Full explanation of the forecast..."
+    }
+    
+    Begin Iteration 1.`;
+}
+
+// --- EXA SEARCH INTEGRATION ---
+
+async function searchWithExa(query, numResults = 3) {
+    try {
+        // Clean query of list formatting if present
+        const cleanQuery = query.replace(/,/g, ' ').trim();
+        
         const response = await fetch('https://api.exa.ai/search', {
             method: 'POST',
             headers: {
@@ -65,12 +226,12 @@ async function searchWithExa(query, numResults = 15) {
                 'x-api-key': 'ab80b7d9-b049-4cb8-94af-02cb6fa0b4d2'
             },
             body: JSON.stringify({
-                query: query,
+                query: cleanQuery,
                 numResults: numResults,
                 useAutoprompt: true,
                 type: 'neural',
                 contents: {
-                    text: { maxCharacters: 2000 }
+                    text: { maxCharacters: 1000 }
                 }
             })
         });
@@ -85,394 +246,107 @@ async function searchWithExa(query, numResults = 15) {
     }
 }
 
-async function streamAdvancedAnalysis(event, exaResults) {
-    const eventIntel = extractEventIntelligence(event.title);
-    const prompt = buildAdvancedAnalysisPrompt(event, exaResults, eventIntel);
+// --- UI & PARSING HELPERS ---
+
+function appendLogToUI(htmlContent, type) {
+    const analysisEl = document.getElementById('analysisContent');
+    const div = document.createElement('div');
+    div.className = `agent-log ${type}`;
+    // Add styling for logs
+    div.style.marginBottom = '12px';
+    div.style.padding = '8px 12px';
+    div.style.borderRadius = '6px';
+    div.style.fontSize = '13px';
     
+    if (type === 'thought') {
+        div.style.background = '#f9fafb';
+        div.style.borderLeft = '3px solid #6b7280';
+        div.style.color = '#374151';
+    } else if (type === 'action') {
+        div.style.background = '#eff6ff';
+        div.style.borderLeft = '3px solid #3b82f6';
+        div.style.color = '#1e40af';
+        div.style.fontFamily = 'monospace';
+    }
+    
+    div.innerHTML = htmlContent;
+    analysisEl.appendChild(div);
+    
+    // Auto scroll to bottom
+    const rightCol = document.querySelector('.right-column');
+    if (rightCol) rightCol.scrollTop = rightCol.scrollHeight;
+}
+
+function parseFinalJson(jsonString, eventIntel) {
     try {
-        if (typeof puter === 'undefined') {
-            throw new Error('Puter.js not loaded');
-        }
-        
-        const analysisEl = document.getElementById('analysisContent');
-        analysisEl.innerHTML = '';
-        
-        let fullText = '';
-        
-        const stream = await puter.ai.chat(prompt, {
-            model: 'claude-sonnet-4-20250514',
-            stream: true
-        });
-        
-        for await (const chunk of stream) {
-            if (chunk.text) {
-                fullText += chunk.text;
-                analysisEl.innerHTML = formatAnalysisText(fullText);
-            }
-        }
-        
-        // Parse predictions and create visualizations
-        const analysis = parseStreamedResponse(fullText);
-        displayPredictions(analysis.predictions);
-        displayModelInsight(analysis.insight);
-        
-        // Create sophisticated charts
-        createAdvancedCharts(analysis);
-        
-        updateStatus('Analysis complete');
-        setTimeout(() => {
-            const statusEl = document.getElementById('analysisStatus');
-            if (statusEl) statusEl.style.display = 'none';
-        }, 2000);
-        
-    } catch (error) {
-        console.error('Claude error:', error);
-        throw error;
+        const parsed = JSON.parse(jsonString);
+        return {
+            predictions: parsed.predictions || [],
+            insight: parsed.insight || "Analysis complete.",
+            rationale: parsed.rationale || "No rationale provided."
+        };
+    } catch (e) {
+        console.error("JSON Parse Error:", e);
+        // Fallback structure
+        return {
+            predictions: [
+                { outcome: "Yes", probability: 0.5 },
+                { outcome: "No", probability: 0.5 }
+            ],
+            insight: "Error parsing agent output.",
+            rationale: "The agent completed analysis but the output format was invalid."
+        };
     }
 }
 
-function extractEventIntelligence(title) {
-    const titleLower = title.toLowerCase();
-    let eventType = 'general';
-    let entities = [];
-    let context = '';
+function renderFinalResults(analysis, sources) {
+    const analysisEl = document.getElementById('analysisContent');
     
-    // Sports event detection
-    if (titleLower.match(/\bvs\b|\bat\b|game|match|championship|bowl|playoff|finals?|tournament/)) {
-        eventType = 'sports';
-        const vsMatch = title.match(/(.+?)\s+(?:vs\.?|at)\s+(.+?)(?:\s|$|\?)/i);
-        if (vsMatch) {
-            entities = [vsMatch[1].trim(), vsMatch[2].trim()];
-        }
-        if (titleLower.includes('champion') || titleLower.includes('bowl') || titleLower.includes('cup')) {
-            eventType = 'championship';
-            context = 'Championship event - analyze historical performance, team strength, head-to-head records';
-        } else {
-            context = 'Sports match - consider recent form, injuries, home advantage, historical matchups';
-        }
-    } 
-    // Political event detection
-    else if (titleLower.match(/election|president|senate|congress|poll|vote|campaign|nominee/)) {
-        eventType = 'political';
-        context = 'Political event - analyze polling data, historical trends, demographic factors, campaign momentum';
-    } 
-    // Financial/market detection
-    else if (titleLower.match(/bitcoin|btc|eth|stock|price|\$|usd|market|trading|inflation|fed|rate/)) {
-        eventType = 'financial';
-        context = 'Financial prediction - consider market trends, technical indicators, sentiment, macroeconomic factors';
-    }
-    // Weather/climate
-    else if (titleLower.match(/weather|hurricane|storm|temperature|rain|snow|climate/)) {
-        eventType = 'weather';
-        context = 'Weather prediction - analyze meteorological models, historical patterns, current conditions';
-    }
-    // Entertainment/awards
-    else if (titleLower.match(/oscar|emmy|grammy|award|nominee|win|movie|film|album/)) {
-        eventType = 'entertainment';
-        context = 'Entertainment prediction - consider expert reviews, box office, streaming data, previous award patterns';
-    }
-    // Technology/product
-    else if (titleLower.match(/release|launch|announce|iphone|product|tech|software|app/)) {
-        eventType = 'technology';
-        context = 'Technology prediction - analyze company patterns, market readiness, supply chain, competitor moves';
-    }
-    // General binary
-    else {
-        eventType = 'binary';
-        entities = ['Yes', 'No'];
-        context = 'Binary outcome - evaluate evidence for and against, consider base rates and precedents';
-    }
-    
-    return { type: eventType, entities, context, title };
-}
+    // 1. Clear logs and show final rationale
+    analysisEl.innerHTML = `
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <h4 style="margin-bottom: 10px; color: #000;">Final Analysis</h4>
+            <p>${formatText(analysis.rationale)}</p>
+        </div>
+    `;
 
-function buildAdvancedAnalysisPrompt(event, exaResults, eventIntel) {
-    // Build comprehensive source context (minimum 10 sources)
-    const topSources = exaResults.slice(0, Math.max(10, exaResults.length));
-    const sources = topSources.map((result, i) => 
-        `[SOURCE ${i + 1}] ${result.title}
-URL: ${result.url}
-Published: ${result.publishedDate || 'Recent'}
-Content: ${(result.text || '').substring(0, 1200)}
----`
-    ).join('\n\n');
-    
-    let entityGuidance = '';
-    if (eventIntel.entities.length > 0) {
-        entityGuidance = `\nIDENTIFIED OUTCOMES: ${eventIntel.entities.join(', ')}`;
-    }
-    
-    // Advanced prompt based on MIRAI research paper methodology
-    return `You are a professional forecasting analyst using rigorous statistical methods and multi-source evidence synthesis.
-
-CRITICAL REQUIREMENTS:
-- You MUST cite at least 10 different sources in your analysis
-- Every major claim must reference specific sources by exact title
-- Provide quantitative reasoning with statistical foundations
-- Use Bayesian updating when incorporating new evidence
-- Consider base rates, historical precedents, and trend analysis
-
-EVENT DETAILS:
-Title: ${event.title}
-Type: ${eventIntel.type}${entityGuidance}
-Context: ${eventIntel.context}
-Market Data: Volume ${event.volume}, 24h Vol ${event.volume24h}, Liquidity ${event.liquidity}
-Closes: ${event.closeDate}
-
-AVAILABLE SOURCES (${topSources.length} sources):
-${sources}
-
-ANALYSIS FRAMEWORK (following research methodology):
-
-**Base Rate Analysis**
-Start with the prior probability based on:
-- Historical frequency of similar events
-- Domain-specific base rates
-- Reference class forecasting
-Cite historical data sources.
-
-**Multi-Source Evidence Synthesis**
-Systematically evaluate each source:
-- Source 1 (cite title): Key finding and reliability assessment
-- Source 2 (cite title): Key finding and how it updates our belief
-- Continue through at least 10 sources
-- Note: Weight sources by credibility, recency, and sample size
-- Identify consensus views vs. outlier predictions
-
-**Quantitative Probability Assessment**
-- Starting probability (base rate): X%
-- After source 1: Updated to Y% because [specific evidence]
-- After source 2: Updated to Z% because [specific evidence]
-- Continue through all major sources
-- Final probability with confidence interval
-
-**Statistical Indicators**
-- Trend direction and momentum
-- Volatility and uncertainty measures  
-- Correlation with related events/markets
-- Key leading indicators
-
-**Risk Factors and Scenarios**
-Best case scenario (probability: X%): [description]
-Base case scenario (probability: Y%): [description]  
-Worst case scenario (probability: Z%): [description]
-
-**Temporal Considerations**
-- Time until event: [X days]
-- How probability may shift as event approaches
-- Key dates or catalysts to watch
-
-**Confidence Assessment**
-- Data quality: [High/Medium/Low]
-- Source agreement: [Strong/Moderate/Weak]
-- Overall confidence: [High/Medium/Low]
-- Key uncertainties remaining
-
-\`\`\`json
-{
-  "predictions": [
-    {"outcome": "${eventIntel.entities[0] || 'Outcome 1'}", "probability": 0.XX, "confidence": "High/Medium/Low"},
-    {"outcome": "${eventIntel.entities[1] || 'Outcome 2'}", "probability": 0.XX, "confidence": "High/Medium/Low"}
-  ],
-  "insight": "Single most important factor affecting outcome",
-  "confidence": "High|Medium|Low",
-  "sources_cited": 10,
-  "base_rate": 0.XX,
-  "key_uncertainty": "Primary risk factor"
-}
-\`\`\`
-
-MANDATORY REQUIREMENTS:
-✓ Cite at least 10 different sources by exact title throughout analysis
-✓ Provide specific probabilities with statistical reasoning
-✓ Show Bayesian updating process
-✓ Quantify uncertainty and confidence levels
-✓ Use domain-specific metrics and indicators
-✓ Probabilities must sum to 1.0
-✓ No hedging or refusing to predict - provide definitive analysis`;
-}
-
-function parseStreamedResponse(text) {
-    try {
-        const jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[1]);
-            return {
-                predictions: parsed.predictions || [
-                    { outcome: 'Yes', probability: 0.5, confidence: 'Medium' },
-                    { outcome: 'No', probability: 0.5, confidence: 'Medium' }
-                ],
-                insight: parsed.insight || 'Analysis complete',
-                confidence: parsed.confidence || 'Medium',
-                base_rate: parsed.base_rate || 0.5,
-                key_uncertainty: parsed.key_uncertainty || 'Multiple factors'
-            };
-        }
-    } catch (error) {
-        console.error('Parse error:', error);
-    }
-    
-    return {
-        predictions: [
-            { outcome: 'Yes', probability: 0.5, confidence: 'Medium' },
-            { outcome: 'No', probability: 0.5, confidence: 'Medium' }
-        ],
-        insight: 'See detailed analysis above',
-        confidence: 'Medium'
-    };
-}
-
-function formatAnalysisText(text) {
-    let displayText = text.replace(/```json[\s\S]*?```/g, '').trim();
-    displayText = displayText.replace(/\*\*(.*?)\*\*/g, '<h4>$1</h4>');
-    
-    const paragraphs = displayText.split('\n\n').filter(p => p.trim());
-    
-    return paragraphs.map(p => {
-        if (p.includes('<h4>')) {
-            return p;
-        }
-        // Preserve line breaks within paragraphs
-        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-    }).join('');
-}
-
-function displayPredictions(predictions) {
-    const container = document.getElementById('predictionRows');
-    container.innerHTML = predictions.map(pred => `
+    // 2. Update Prediction Table
+    const tableContainer = document.getElementById('predictionRows');
+    tableContainer.innerHTML = analysis.predictions.map(pred => `
         <div class="table-row">
             <span class="row-label">${escapeHtml(pred.outcome)}</span>
             <span class="row-value">${(pred.probability * 100).toFixed(0)}%</span>
         </div>
     `).join('');
+
+    // 3. Update Insight
+    document.getElementById('modelInsightText').textContent = analysis.insight;
+
+    // 4. Render Charts
+    createProbabilityChart(analysis.predictions);
 }
 
-function displayModelInsight(insight) {
-    document.getElementById('modelInsightText').textContent = insight;
+function formatText(text) {
+    return text.replace(/\n/g, '<br>');
 }
 
-function displaySources(exaResults) {
-    const container = document.getElementById('sourcesList');
-    const sources = exaResults.slice(0, 15);
+function extractEventIntelligence(title) {
+    const titleLower = title.toLowerCase();
+    let type = 'general';
+    let context = 'General market prediction';
     
-    document.getElementById('sourcesCount').textContent = sources.length;
-    
-    container.innerHTML = sources.map((source, i) => `
-        <div class="source-card">
-            <div class="source-header">
-                <div class="source-title">${escapeHtml(source.title)}</div>
-                <a href="${escapeHtml(source.url)}" target="_blank" rel="noopener" class="source-link">View</a>
-            </div>
-            <div class="source-description">
-                ${escapeHtml((source.text || '').substring(0, 180))}...
-            </div>
-            <div class="source-citation">
-                [${i + 1}] ${new URL(source.url).hostname} • ${source.publishedDate || 'Recent'}
-            </div>
-        </div>
-    `).join('');
-}
-
-function createAdvancedCharts(analysis) {
-    const predictions = analysis.predictions || [];
-    
-    // Main probability chart
-    createProbabilityChart(predictions);
-}
-
-function createProbabilityChart(predictions) {
-    const container = document.getElementById('mainChart');
-    container.innerHTML = '<div id="chartCanvas"></div>';
-    
-    // Generate time series data showing probability evolution
-    const categories = ['30d ago', '20d ago', '10d ago', '5d ago', 'Today'];
-    const series = predictions.map(pred => {
-        const finalProb = pred.probability * 100;
-        return {
-            name: pred.outcome,
-            data: generateProbabilityTrend(finalProb, 5)
-        };
-    });
-    
-    const options = {
-        series: series,
-        chart: {
-            type: 'line',
-            height: 350,
-            toolbar: { show: false },
-            animations: {
-                enabled: true,
-                easing: 'easeinout',
-                speed: 800
-            },
-            fontFamily: 'Manrope, sans-serif'
-        },
-        stroke: {
-            curve: 'smooth',
-            width: 3
-        },
-        colors: ['#000000', '#6b7280', '#9ca3af'],
-        xaxis: {
-            categories: categories,
-            labels: {
-                style: {
-                    colors: '#6b7280',
-                    fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
-                }
-            }
-        },
-        yaxis: {
-            min: 0,
-            max: 100,
-            labels: {
-                formatter: (v) => v.toFixed(0) + '%',
-                style: {
-                    colors: '#6b7280',
-                    fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
-                }
-            }
-        },
-        legend: {
-            show: true,
-            position: 'top',
-            fontFamily: 'Manrope, sans-serif',
-            labels: {
-                colors: '#000000'
-            }
-        },
-        tooltip: {
-            y: {
-                formatter: (v) => v.toFixed(1) + '%'
-            }
-        },
-        grid: {
-            borderColor: '#e5e7eb',
-            strokeDashArray: 3
-        }
-    };
-    
-    const chart = new ApexCharts(document.querySelector("#chartCanvas"), options);
-    chart.render();
-}
-
-function generateProbabilityTrend(finalProb, points) {
-    const data = [];
-    const baseProb = 50;
-    
-    for (let i = 0; i < points; i++) {
-        const progress = i / (points - 1);
-        // Smooth sigmoid-like curve
-        const smoothing = Math.pow(progress, 0.7);
-        const noise = (Math.random() - 0.5) * 3;
-        const value = baseProb + (finalProb - baseProb) * smoothing + noise;
-        data.push(parseFloat(Math.max(0, Math.min(100, value)).toFixed(1)));
+    if (titleLower.match(/vs|match|game|playoff/)) {
+        type = 'sports';
+        context = 'Sports analysis: Consider team form, injuries, and head-to-head records.';
+    } else if (titleLower.match(/election|vote|poll|nominee/)) {
+        type = 'politics';
+        context = 'Political analysis: Consider polling data, historical trends, and demographics.';
+    } else if (titleLower.match(/price|bitcoin|stock|market|fed/)) {
+        type = 'finance';
+        context = 'Financial analysis: Consider technical indicators, market sentiment, and macro data.';
     }
     
-    // Ensure last point is exact
-    data[points - 1] = parseFloat(finalProb.toFixed(1));
-    return data;
+    return { type, context };
 }
 
 function updateStatus(message) {
@@ -483,9 +357,59 @@ function updateStatus(message) {
     }
 }
 
+function displaySources(sources) {
+    const container = document.getElementById('sourcesList');
+    container.innerHTML = sources.map((source, i) => `
+        <div class="source-card">
+            <div class="source-header">
+                <div class="source-title">${escapeHtml(source.title)}</div>
+                <a href="${escapeHtml(source.url)}" target="_blank" class="source-link">View</a>
+            </div>
+            <div class="source-description">
+                ${escapeHtml((source.text || '').substring(0, 150))}...
+            </div>
+            <div class="source-citation">
+                [${i + 1}] ${new URL(source.url).hostname}
+            </div>
+        </div>
+    `).join('');
+}
+
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Charting Logic (Preserved from original)
+function createProbabilityChart(predictions) {
+    const container = document.getElementById('mainChart');
+    container.innerHTML = '<div id="chartCanvas"></div>';
+    
+    const categories = ['Past', 'Current'];
+    const series = predictions.map(pred => {
+        const prob = pred.probability * 100;
+        return {
+            name: pred.outcome,
+            // Simple trend generation for visualization
+            data: [prob + (Math.random() * 10 - 5), prob] 
+        };
+    });
+    
+    const options = {
+        series: series,
+        chart: {
+            type: 'line',
+            height: 350,
+            toolbar: { show: false },
+            fontFamily: 'Manrope, sans-serif'
+        },
+        stroke: { curve: 'smooth', width: 3 },
+        colors: ['#000000', '#6b7280', '#9ca3af'],
+        xaxis: { categories: categories },
+        yaxis: { min: 0, max: 100, labels: { formatter: v => v.toFixed(0) + '%' } }
+    };
+    
+    new ApexCharts(document.querySelector("#chartCanvas"), options).render();
 }
