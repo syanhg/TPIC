@@ -39,15 +39,12 @@ async function performAdvancedAnalysis(event) {
         // Step 1: Show thinking phase (instant)
         showThinkingPhase(event);
         
-        // Step 2: Show searching phase with shimmer (100ms delay)
+        // Step 2: Show searching phase immediately
         setTimeout(() => showSearchingPhase(event), 100);
         
-        // Step 3: Start web research in parallel (don't wait)
-        const searchPromise = searchWithExa(event.title, 12);
-        
-        // Step 4: Show reviewing phase after 800ms
+        // Step 3: Start web research
         setTimeout(async () => {
-            const exaResults = await searchPromise;
+            const exaResults = await searchWithExa(event.title, 10);
             console.log(`Found ${exaResults.length} sources for analysis`);
             
             // Show reviewing with shimmer effect
@@ -56,7 +53,7 @@ async function performAdvancedAnalysis(event) {
             // Display sources in sidebar
             displaySources(exaResults);
             
-            // Step 5: Start Claude analysis immediately
+            // Step 4: Start Claude analysis
             await streamAdvancedAnalysis(event, exaResults);
             
             // Hide status after complete
@@ -64,12 +61,13 @@ async function performAdvancedAnalysis(event) {
                 const statusEl = document.getElementById('analysisStatus');
                 if (statusEl) statusEl.style.display = 'none';
             }, 2000);
-        }, 800);
+        }, 600);
         
     } catch (error) {
         console.error('Analysis error:', error);
         document.getElementById('analysisContent').innerHTML = `
-            <p style="color: #000000;">Analysis encountered an error. Please refresh the page.</p>
+            <p style="color: #ef4444;">Analysis encountered an error: ${error.message}</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 8px;">Please refresh the page to try again.</p>
         `;
     }
 }
@@ -81,17 +79,15 @@ function showThinkingPhase(event) {
 }
 
 function showSearchingPhase(event) {
-    // Show searching section
     const searchingSection = document.getElementById('searchingSection');
     searchingSection.style.display = 'block';
     
     const searchQueries = document.getElementById('searchQueries');
     const eventIntel = extractEventIntelligence(event.title);
     
-    // Generate intelligent search queries based on event type
     const queries = generateSearchQueries(event, eventIntel);
     
-    // Display all queries instantly with shimmer
+    // Display all queries with stagger
     queries.forEach((query, i) => {
         setTimeout(() => {
             const queryEl = document.createElement('div');
@@ -105,11 +101,8 @@ function showSearchingPhase(event) {
             `;
             searchQueries.appendChild(queryEl);
             
-            // Remove shimmer after 1.5s
-            setTimeout(() => {
-                queryEl.classList.remove('shimmer-active');
-            }, 1500);
-        }, i * 150); // Stagger by 150ms
+            setTimeout(() => queryEl.classList.remove('shimmer-active'), 1500);
+        }, i * 150);
     });
 }
 
@@ -117,38 +110,33 @@ function generateSearchQueries(event, eventIntel) {
     const title = event.title;
     const queries = [];
     
-    // Base query
-    queries.push(`${title.substring(0, 50)}... predictions 2026`);
+    queries.push(`${title.substring(0, 50)} predictions 2026`);
     
-    // Type-specific queries
     if (eventIntel.type === 'sports' || eventIntel.type === 'championship') {
         if (eventIntel.entities.length >= 2) {
             queries.push(`${eventIntel.entities[0]} vs ${eventIntel.entities[1]} analysis`);
         }
-        queries.push(`${title.substring(0, 40)} expert forecasts odds`);
+        queries.push(`${title.substring(0, 40)} expert forecasts`);
     } else if (eventIntel.type === 'political') {
         queries.push(`${title.substring(0, 40)} polls forecasts`);
-        queries.push(`${title.substring(0, 40)} political analysis experts`);
+        queries.push(`${title.substring(0, 40)} expert analysis`);
     } else if (eventIntel.type === 'financial') {
         queries.push(`${title.substring(0, 40)} market analysis`);
-        queries.push(`${title.substring(0, 40)} financial forecasts`);
+        queries.push(`${title.substring(0, 40)} price forecasts`);
     } else {
-        queries.push(`${title.substring(0, 40)} forecasts analysis`);
+        queries.push(`${title.substring(0, 40)} analysis`);
         queries.push(`${title.substring(0, 40)} expert predictions`);
     }
     
-    return queries.slice(0, 3); // Return top 3 queries
+    return queries.slice(0, 3);
 }
 
 function showReviewingPhase(exaResults) {
     const reviewingSection = document.getElementById('reviewingSection');
     const reviewingSources = document.getElementById('reviewingSources');
-    const reviewingLabel = document.getElementById('reviewingLabel');
     
     reviewingSection.style.display = 'block';
-    reviewingLabel.textContent = 'sources';
     
-    // Show top 6 sources with staggered shimmer
     const topSources = exaResults.slice(0, 6);
     
     topSources.forEach((source, index) => {
@@ -159,7 +147,6 @@ function showReviewingPhase(exaResults) {
             const sourceEl = document.createElement('div');
             sourceEl.className = 'source-item shimmer-active';
             
-            // Determine favicon style
             let faviconClass = 'default';
             let faviconText = domainName.charAt(0).toUpperCase();
             
@@ -186,16 +173,12 @@ function showReviewingPhase(exaResults) {
             `;
             
             reviewingSources.appendChild(sourceEl);
-            
-            // Remove shimmer after animation completes
-            setTimeout(() => {
-                sourceEl.classList.remove('shimmer-active');
-            }, 1800);
-        }, index * 120); // Stagger by 120ms for smoother appearance
+            setTimeout(() => sourceEl.classList.remove('shimmer-active'), 1800);
+        }, index * 120);
     });
 }
 
-async function searchWithExa(query, numResults = 12) {
+async function searchWithExa(query, numResults = 10) {
     try {
         const response = await fetch('https://api.exa.ai/search', {
             method: 'POST',
@@ -209,7 +192,7 @@ async function searchWithExa(query, numResults = 12) {
                 useAutoprompt: true,
                 type: 'neural',
                 contents: {
-                    text: { maxCharacters: 1500 } // Reduced for faster response
+                    text: { maxCharacters: 1200 }
                 }
             })
         });
@@ -226,37 +209,32 @@ async function searchWithExa(query, numResults = 12) {
 
 async function streamAdvancedAnalysis(event, exaResults) {
     const eventIntel = extractEventIntelligence(event.title);
-    const prompt = buildAdvancedAnalysisPrompt(event, exaResults, eventIntel);
+    const prompt = buildAnalysisPrompt(event, exaResults, eventIntel);
     
     try {
-        if (typeof puter === 'undefined') {
-            throw new Error('Puter.js not loaded');
-        }
-        
         const analysisEl = document.getElementById('analysisContent');
         analysisEl.innerHTML = '';
         
         let fullText = '';
         
-        const stream = await puter.ai.chat(prompt, {
+        // Use puter.ai.chat with streaming based on documentation
+        const response = await puter.ai.chat(prompt, {
             model: 'claude-sonnet-4-20250514',
             stream: true
         });
         
-        for await (const chunk of stream) {
-            if (chunk.text) {
+        // Stream the response
+        for await (const chunk of response) {
+            if (chunk?.text) {
                 fullText += chunk.text;
                 analysisEl.innerHTML = formatAnalysisText(fullText);
             }
         }
         
-        // Parse predictions and create visualizations
+        // Parse and display results
         const analysis = parseStreamedResponse(fullText);
         displayPredictions(analysis.predictions);
         displayModelInsight(analysis.insight);
-        
-        // Create sophisticated charts
-        createAdvancedCharts(analysis);
         
     } catch (error) {
         console.error('Claude error:', error);
@@ -270,114 +248,79 @@ function extractEventIntelligence(title) {
     let entities = [];
     let context = '';
     
-    // Sports event detection
     if (titleLower.match(/\bvs\b|\bat\b|game|match|championship|bowl|playoff|finals?|tournament/)) {
         eventType = 'sports';
         const vsMatch = title.match(/(.+?)\s+(?:vs\.?|at)\s+(.+?)(?:\s|$|\?)/i);
         if (vsMatch) {
             entities = [vsMatch[1].trim(), vsMatch[2].trim()];
         }
-        if (titleLower.includes('champion') || titleLower.includes('bowl') || titleLower.includes('cup')) {
-            eventType = 'championship';
-            context = 'Championship event - analyze historical performance, team strength, head-to-head records';
-        } else {
-            context = 'Sports match - consider recent form, injuries, home advantage, historical matchups';
-        }
-    } 
-    // Political event detection
-    else if (titleLower.match(/election|president|senate|congress|poll|vote|campaign|nominee/)) {
+        context = 'Sports event - analyze recent form, injuries, historical matchups';
+    } else if (titleLower.match(/election|president|senate|congress|poll|vote|campaign/)) {
         eventType = 'political';
-        context = 'Political event - analyze polling data, historical trends, demographic factors, campaign momentum';
-    } 
-    // Financial/market detection
-    else if (titleLower.match(/bitcoin|btc|eth|stock|price|\$|usd|market|trading|inflation|fed|rate/)) {
+        context = 'Political event - analyze polling data, historical trends, demographics';
+    } else if (titleLower.match(/bitcoin|btc|eth|stock|price|\$|market|trading/)) {
         eventType = 'financial';
-        context = 'Financial prediction - consider market trends, technical indicators, sentiment, macroeconomic factors';
-    }
-    // Weather/climate
-    else if (titleLower.match(/weather|hurricane|storm|temperature|rain|snow|climate/)) {
-        eventType = 'weather';
-        context = 'Weather prediction - analyze meteorological models, historical patterns, current conditions';
-    }
-    // Entertainment/awards
-    else if (titleLower.match(/oscar|emmy|grammy|award|nominee|win|movie|film|album/)) {
-        eventType = 'entertainment';
-        context = 'Entertainment prediction - consider expert reviews, box office, streaming data, previous award patterns';
-    }
-    // Technology/product
-    else if (titleLower.match(/release|launch|announce|iphone|product|tech|software|app/)) {
-        eventType = 'technology';
-        context = 'Technology prediction - analyze company patterns, market readiness, supply chain, competitor moves';
-    }
-    // General binary
-    else {
+        context = 'Financial prediction - consider market trends, technical indicators';
+    } else {
         eventType = 'binary';
         entities = ['Yes', 'No'];
-        context = 'Binary outcome - evaluate evidence for and against, consider base rates and precedents';
+        context = 'Binary outcome - evaluate evidence for and against';
     }
     
     return { type: eventType, entities, context, title };
 }
 
-function buildAdvancedAnalysisPrompt(event, exaResults, eventIntel) {
-    // Build comprehensive source context - optimized for speed
-    const topSources = exaResults.slice(0, 10); // Reduced to 10 for faster processing
+function buildAnalysisPrompt(event, exaResults, eventIntel) {
+    const topSources = exaResults.slice(0, 8);
     const sources = topSources.map((result, i) => {
-        const sourceNum = i + 1;
         const cleanText = (result.text || '').replace(/\n+/g, ' ').trim();
-        return `SOURCE ${sourceNum}: "${result.title}"
+        return `SOURCE ${i + 1}: "${result.title}"
 Publisher: ${new URL(result.url).hostname}
-Date: ${result.publishedDate || 'Recent'}
-Key Content: ${cleanText.substring(0, 1000)}
+Content: ${cleanText.substring(0, 800)}
 ---`;
     }).join('\n\n');
     
     let entityGuidance = '';
     if (eventIntel.entities.length > 0) {
-        entityGuidance = `\nOUTCOMES TO PREDICT: ${eventIntel.entities.join(' vs ')}`;
+        entityGuidance = `\nOUTCOMES: ${eventIntel.entities.join(' vs ')}`;
     }
     
-    // Streamlined prompt for faster response
-    return `You are a professional forecasting analyst. Analyze this event using the sources provided and generate predictions.
+    return `You are a forecasting analyst. Analyze this event and provide predictions.
 
-EVENT:
-Title: ${event.title}
+EVENT: ${event.title}
 Type: ${eventIntel.type}${entityGuidance}
-Context: ${eventIntel.context}
 
-SOURCES (${topSources.length} verified):
+SOURCES (${topSources.length}):
 ${sources}
 
 INSTRUCTIONS:
-1. Cite at least ${Math.min(topSources.length, 8)} sources by exact title
-2. Use Bayesian reasoning to update probabilities
-3. Provide statistical confidence intervals
-4. Show your reasoning step-by-step
+1. Cite at least ${Math.min(topSources.length, 6)} sources by title
+2. Show Bayesian reasoning 
+3. Provide confidence intervals
+4. Be concise but thorough
 
-Analyze the sources, cite them explicitly, and provide your final predictions in this JSON format at the end:
+Format your final predictions as JSON:
 
 \`\`\`json
 {
   "predictions": [
     {
-      "outcome": "${eventIntel.entities[0] || 'Primary Outcome'}", 
+      "outcome": "${eventIntel.entities[0] || 'Primary'}", 
       "probability": 0.XX,
-      "confidence": "High|Medium|Low",
-      "key_drivers": ["Driver 1 (SOURCE X)", "Driver 2 (SOURCE Y)"]
+      "confidence": "High|Medium|Low"
     },
     {
-      "outcome": "${eventIntel.entities[1] || 'Alternative Outcome'}", 
+      "outcome": "${eventIntel.entities[1] || 'Alternative'}", 
       "probability": 0.XX,
-      "confidence": "High|Medium|Low",
-      "key_drivers": ["Driver 1", "Driver 2"]
+      "confidence": "High|Medium|Low"
     }
   ],
-  "insight": "Most critical factor driving the prediction",
+  "insight": "Most critical factor",
   "confidence": "High|Medium|Low"
 }
 \`\`\`
 
-Begin your analysis now with clear source citations.`;
+Begin analysis:`;
 }
 
 function parseStreamedResponse(text) {
@@ -386,10 +329,7 @@ function parseStreamedResponse(text) {
         if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[1]);
             return {
-                predictions: parsed.predictions || [
-                    { outcome: 'Yes', probability: 0.5, confidence: 'Medium' },
-                    { outcome: 'No', probability: 0.5, confidence: 'Medium' }
-                ],
+                predictions: parsed.predictions || [],
                 insight: parsed.insight || 'Analysis complete',
                 confidence: parsed.confidence || 'Medium'
             };
@@ -415,9 +355,7 @@ function formatAnalysisText(text) {
     const paragraphs = displayText.split('\n\n').filter(p => p.trim());
     
     return paragraphs.map(p => {
-        if (p.includes('<h4>')) {
-            return p;
-        }
+        if (p.includes('<h4>')) return p;
         return `<p>${p.replace(/\n/g, '<br>')}</p>`;
     }).join('');
 }
@@ -438,7 +376,7 @@ function displayModelInsight(insight) {
 
 function displaySources(exaResults) {
     const container = document.getElementById('sourcesList');
-    const sources = exaResults.slice(0, 12);
+    const sources = exaResults.slice(0, 10);
     
     document.getElementById('totalSources').textContent = sources.length;
     
@@ -456,106 +394,6 @@ function displaySources(exaResults) {
             </div>
         </div>
     `).join('');
-}
-
-function createAdvancedCharts(analysis) {
-    const predictions = analysis.predictions || [];
-    
-    // Main probability chart
-    createProbabilityChart(predictions);
-}
-
-function createProbabilityChart(predictions) {
-    const container = document.getElementById('mainChart');
-    container.innerHTML = '<div id="chartCanvas"></div>';
-    
-    // Generate time series data showing probability evolution
-    const categories = ['30d ago', '20d ago', '10d ago', '5d ago', 'Today'];
-    const series = predictions.map(pred => {
-        const finalProb = pred.probability * 100;
-        return {
-            name: pred.outcome,
-            data: generateProbabilityTrend(finalProb, 5)
-        };
-    });
-    
-    const options = {
-        series: series,
-        chart: {
-            type: 'line',
-            height: 350,
-            toolbar: { show: false },
-            animations: {
-                enabled: true,
-                easing: 'easeinout',
-                speed: 800
-            },
-            fontFamily: 'Manrope, sans-serif'
-        },
-        stroke: {
-            curve: 'smooth',
-            width: 3
-        },
-        colors: ['#000000', '#6b7280', '#9ca3af'],
-        xaxis: {
-            categories: categories,
-            labels: {
-                style: {
-                    colors: '#6b7280',
-                    fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
-                }
-            }
-        },
-        yaxis: {
-            min: 0,
-            max: 100,
-            labels: {
-                formatter: (v) => v.toFixed(0) + '%',
-                style: {
-                    colors: '#6b7280',
-                    fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
-                }
-            }
-        },
-        legend: {
-            show: true,
-            position: 'top',
-            fontFamily: 'Manrope, sans-serif',
-            labels: {
-                colors: '#000000'
-            }
-        },
-        tooltip: {
-            y: {
-                formatter: (v) => v.toFixed(1) + '%'
-            }
-        },
-        grid: {
-            borderColor: '#e5e7eb',
-            strokeDashArray: 3
-        }
-    };
-    
-    const chart = new ApexCharts(document.querySelector("#chartCanvas"), options);
-    chart.render();
-}
-
-function generateProbabilityTrend(finalProb, points) {
-    const data = [];
-    const baseProb = 50;
-    
-    for (let i = 0; i < points; i++) {
-        const progress = i / (points - 1);
-        const smoothing = Math.pow(progress, 0.7);
-        const noise = (Math.random() - 0.5) * 3;
-        const value = baseProb + (finalProb - baseProb) * smoothing + noise;
-        data.push(parseFloat(Math.max(0, Math.min(100, value)).toFixed(1)));
-    }
-    
-    data[points - 1] = parseFloat(finalProb.toFixed(1));
-    return data;
 }
 
 function escapeHtml(text) {
