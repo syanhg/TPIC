@@ -123,7 +123,7 @@ async function streamClaudeAnalysis(event, exaResults) {
         displayPredictions(analysis.predictions);
         displayModelInsight(analysis.insight);
         
-        updateStatus('analysisStatus', 'Analysis complete');
+        updateStatus('analysisStatus', '✅ Analysis complete');
         setTimeout(() => {
             document.getElementById('analysisStatus').style.display = 'none';
         }, 2000);
@@ -136,59 +136,111 @@ async function streamClaudeAnalysis(event, exaResults) {
 
 function buildAnalysisPrompt(event, exaResults) {
     const sources = exaResults.slice(0, 6).map((result, i) => {
-        return `[${i + 1}] ${result.title}
+        return `[SOURCE ${i + 1}] ${result.title}
 URL: ${result.url}
 Published: ${result.publishedDate || 'Recent'}
 Content: ${(result.text || 'No content').substring(0, 800)}
 ---`;
     }).join('\n\n');
     
-    return `You are an expert forecasting analyst using rigorous statistical methods. Analyze this prediction market event.
+    return `<SYSTEM_CONTEXT>
+You are a professional prediction market analyst. Your role is to provide actionable forecasts, NOT to explain why you cannot make predictions.
 
-EVENT: ${event.title}
-CLOSES: ${event.closeDate}
-MARKET DATA:
-- Volume: ${event.volume}
-- 24h Volume: ${event.volume24h}
-- Liquidity: ${event.liquidity}
+CRITICAL BEHAVIORAL RULES:
+1. NEVER say "I cannot provide analysis" or "insufficient data"
+2. NEVER ask for more information or complain about missing sources
+3. ALWAYS work with whatever information is provided
+4. If sources are limited, use your general knowledge combined with available data
+5. ALWAYS generate predictions - this is your PRIMARY function
+6. Be confident but honest about uncertainty levels in the confidence field
 
-RESEARCH SOURCES:
-${sources || 'Limited sources available'}
+Your analysis will be published to users who expect actionable predictions. Refusing to predict is NOT acceptable.
+</SYSTEM_CONTEXT>
 
-ANALYSIS REQUIREMENTS:
-Apply STRICT statistical rigor:
-1. Base rate analysis - what percentage of similar events historically occurred?
-2. Reference class forecasting - identify analogous historical cases
-3. Multi-factor weighting - assess each evidence source by quality and recency
-4. Bayesian updating - adjust priors based on new evidence
-5. Confidence intervals - quantify uncertainty
+<ANALYSIS_FRAMEWORK>
+Apply this rigorous methodology:
 
-Output format (text first, then JSON at end):
+1. BASE RATE ANALYSIS
+   - What is the historical baseline probability for this type of event?
+   - For sports: typical win rates, home advantage, seeding patterns
+   - For politics: incumbent advantages, polling accuracy, historical trends
+   - For markets: volatility patterns, directional bias, mean reversion
 
-First, write a comprehensive analysis explaining your reasoning. Cite specific evidence like this:
-- "According to [Source Name], [specific fact or quote]" 
-- "Data from [Source] shows that [statistic]"
-- "[Source] reports that [finding]"
+2. REFERENCE CLASS FORECASTING  
+   - Identify 3-5 analogous historical cases
+   - Extract probability patterns from similar past events
+   - Adjust for differences in context
 
-Be specific with citations - mention the source name and the actual data point.
+3. EVIDENCE SYNTHESIS
+   - Weight each source by recency (newer = higher weight)
+   - Weight by source quality (official stats > opinion pieces)
+   - Identify consensus vs outlier positions
+   - Look for leading indicators in the data
 
-Then at the very end, output this JSON:
+4. BAYESIAN UPDATING
+   - Start with base rate as prior
+   - Update based on specific evidence from sources
+   - Show your reasoning chain
 
+5. UNCERTAINTY QUANTIFICATION
+   - High confidence: Strong consensus + good historical patterns + quality sources
+   - Medium confidence: Mixed signals or moderate data quality  
+   - Low confidence: Limited data or high unpredictability
+</ANALYSIS_FRAMEWORK>
+
+<EVENT_DETAILS>
+Title: ${event.title}
+Closes: ${event.closeDate}
+Market Metrics:
+- Total Volume: ${event.volume} (indicator of interest/liquidity)
+- 24h Volume: ${event.volume24h} (recent activity level)
+- Liquidity: ${event.liquidity} (market depth)
+
+Context: This is a real prediction market with actual trading volume. The volume indicates ${parseFloat(event.volume?.replace(/[$,KM]/g, '') || 0) > 100 ? 'high interest - strong signal' : 'moderate interest'}.
+</EVENT_DETAILS>
+
+<RESEARCH_SOURCES>
+${sources || 'Note: Limited web sources. Rely on your general knowledge of similar events, historical patterns, and statistical baselines for this type of prediction.'}
+</RESEARCH_SOURCES>
+
+<OUTPUT_FORMAT>
+Write a comprehensive analysis in natural language. Structure it as:
+
+**Analysis:**
+
+[Paragraph 1] Start with the base rate and reference class. Example: "Historically, [type of event] occurs with X% frequency. Similar cases like [examples] show [pattern]."
+
+[Paragraph 2] Synthesize the evidence from sources. For each key point, cite like this: "According to [Source Name from above], [specific finding]." Or if using general knowledge: "Statistical analysis of similar markets shows [pattern]."
+
+[Paragraph 3] Explain your final probability estimate. Example: "Weighting recent performance (40%), historical patterns (30%), and market indicators (30%), this suggests a [X]% probability of [outcome]."
+
+[Paragraph 4] Address key uncertainties and confidence level.
+
+**Final Prediction:**
+
+```json
 {
   "predictions": [
-    {"outcome": "Outcome 1", "probability": 0.XX},
-    {"outcome": "Outcome 2", "probability": 0.XX}
+    {"outcome": "[Specific team/person/outcome name]", "probability": 0.XX},
+    {"outcome": "[Alternative outcome name]", "probability": 0.XX}
   ],
-  "insight": "One sentence key insight",
-  "confidence": "High/Medium/Low"
+  "insight": "One actionable sentence: 'Key factor is [X], which favors [outcome]'",
+  "confidence": "High|Medium|Low"
 }
+```
 
-CRITICAL: 
-- Cite SPECIFIC sources by name
-- Use ACTUAL data from sources
-- Probabilities must sum to 1.0
-- For sports: extract team names from title
-- Be precise with citations`;
+<CRITICAL_INSTRUCTIONS>
+- Probabilities MUST sum to exactly 1.0
+- For sports events with teams: Extract actual team names from the title (e.g., "Patriots vs Chiefs" → outcomes are "Patriots" and "Chiefs")
+- For "X at Y" format: Y is home team (slight advantage)
+- For championship markets: Pick 1-2 most likely winners based on current season context
+- For binary events: outcomes are "Yes" and "No"
+- DO NOT output probabilities of 0.50/0.50 unless truly uncertain - take a position
+- CITE sources by name when available, or cite "historical analysis" or "market patterns"
+- Make a definitive prediction - users need actionable forecasts
+</CRITICAL_INSTRUCTIONS>
+
+Now provide your analysis and prediction:`;
 }
 
 function parseStreamedResponse(text, exaResults) {
