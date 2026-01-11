@@ -37,22 +37,22 @@ async function loadEventData() {
 
 async function performAdvancedAnalysis(event) {
     try {
-        // Step 1: Comprehensive web research using Tavily (MINIMUM 10 sources required)
-        updateStatus('Conducting comprehensive research with Tavily AI Search...');
-        const tavilyResults = await searchWithTavily(event.title, 15);
+        // Step 1: Comprehensive web research using Serper (MINIMUM 10 sources required)
+        updateStatus('Conducting comprehensive Google Search research...');
+        const serperResults = await searchWithSerper(event.title, 15);
         
-        console.log(`Found ${tavilyResults.length} sources for analysis`);
+        console.log(`Found ${serperResults.length} sources for analysis`);
         
         // CRITICAL: Must have at least 10 sources to proceed
-        if (tavilyResults.length < 10) {
-            const errorMsg = `INSUFFICIENT SOURCES: Found only ${tavilyResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
+        if (serperResults.length < 10) {
+            const errorMsg = `INSUFFICIENT SOURCES: Found only ${serperResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
             updateStatus(errorMsg);
             document.getElementById('analysisContent').innerHTML = `
                 <div style="padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
                     <p style="color: #991b1b; font-weight: 600; margin-bottom: 8px;">Analysis Cannot Proceed</p>
                     <p style="color: #7f1d1d; font-size: 13px;">${errorMsg}</p>
                     <p style="color: #7f1d1d; font-size: 13px; margin-top: 12px;">
-                        The event "${event.title}" may be too niche or too recent. Please try a different event with more available information.
+                        The event "${event.title}" may be too specific or too recent. Try a more general query or a different event.
                     </p>
                 </div>
             `;
@@ -61,73 +61,95 @@ async function performAdvancedAnalysis(event) {
         }
         
         // Display sources immediately
-        displaySources(tavilyResults);
+        displaySources(serperResults);
         
         // Step 2: Advanced multi-stage analysis with research paper methodology
         updateStatus('Performing advanced statistical analysis with AI using Bayesian inference...');
-        await streamAdvancedAnalysis(event, tavilyResults);
+        await streamAdvancedAnalysis(event, serperResults);
         
     } catch (error) {
         console.error('Analysis error:', error);
         document.getElementById('analysisContent').innerHTML = `
-            <p style="color: #991b1b;">Analysis encountered an error: ${error.message}</p>
+            <div style="padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
+                <p style="color: #991b1b; font-weight: 600; margin-bottom: 8px;">Analysis Error</p>
+                <p style="color: #7f1d1d; font-size: 13px;">${error.message}</p>
+            </div>
         `;
         hideAnalysisStatus();
     }
 }
 
-async function searchWithTavily(query, numResults = 15) {
+async function searchWithSerper(query, numResults = 15) {
     try {
-        // Tavily API optimized for AI agents and RAG
-        const response = await fetch('https://api.tavily.com/search', {
+        // Serper API - fastest SERP API with 2,500 free searches/month
+        const response = await fetch('https://google.serper.dev/search', {
             method: 'POST',
             headers: {
+                'X-API-KEY': '4e0fb5f1c31c0b4ab89c0b7c724b8e5fcfe4e5f1',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                api_key: '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',
-                query: query,
-                search_depth: 'advanced',
-                max_results: numResults,
-                include_answer: false,
-                include_raw_content: true,
-                include_domains: [],
-                exclude_domains: []
+                q: query,
+                num: numResults,
+                gl: 'us',
+                hl: 'en'
             })
         });
         
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Tavily API error: ${errorData.error || response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`Serper API error: ${errorData.message || response.statusText}`);
         }
         
         const data = await response.json();
+        const results = [];
         
-        // Transform Tavily response to our expected format
-        if (data.results && Array.isArray(data.results)) {
-            return data.results.map(result => ({
-                title: result.title || 'Untitled',
-                url: result.url || '',
-                text: result.content || result.raw_content || '',
-                publishedDate: result.published_date || new Date().toISOString().split('T')[0],
-                score: result.score || 0
-            }));
+        // Extract organic results
+        if (data.organic && Array.isArray(data.organic)) {
+            data.organic.forEach(result => {
+                results.push({
+                    title: result.title || 'Untitled',
+                    url: result.link || '',
+                    text: result.snippet || '',
+                    publishedDate: result.date || new Date().toISOString().split('T')[0],
+                    position: result.position || 0
+                });
+            });
         }
         
-        return [];
+        // Extract news results if available
+        if (data.news && Array.isArray(data.news)) {
+            data.news.forEach(result => {
+                results.push({
+                    title: result.title || 'Untitled',
+                    url: result.link || '',
+                    text: result.snippet || '',
+                    publishedDate: result.date || new Date().toISOString().split('T')[0],
+                    position: result.position || 0,
+                    isNews: true
+                });
+            });
+        }
+        
+        // Deduplicate by URL
+        const uniqueResults = Array.from(
+            new Map(results.map(item => [item.url, item])).values()
+        );
+        
+        return uniqueResults.slice(0, numResults);
         
     } catch (error) {
-        console.error('Tavily search error:', error);
+        console.error('Serper search error:', error);
         throw error;
     }
 }
 
-async function streamAdvancedAnalysis(event, tavilyResults) {
-    const prompt = buildAdvancedAnalysisPrompt(event, tavilyResults);
+async function streamAdvancedAnalysis(event, serperResults) {
+    const prompt = buildAdvancedAnalysisPrompt(event, serperResults);
     
     try {
         const analysisEl = document.getElementById('analysisContent');
-        analysisEl.innerHTML = '<p style="color: #6b7280;">Streaming AI analysis...</p>';
+        analysisEl.innerHTML = '<p style="color: #6b7280;">AI is analyzing sources with Bayesian inference...</p>';
         
         const response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
@@ -143,6 +165,10 @@ async function streamAdvancedAnalysis(event, tavilyResults) {
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`Claude API error: ${response.status}`);
+        }
+
         const data = await response.json();
         let fullText = '';
         
@@ -156,8 +182,10 @@ async function streamAdvancedAnalysis(event, tavilyResults) {
             displayModelInsight(analysis.insight);
             displayAnalysisMetrics(analysis);
             
-            updateStatus(`Analysis complete - ${analysis.sources_cited} sources analyzed`);
+            updateStatus(`✓ Analysis complete - ${analysis.sources_cited} sources analyzed with Bayesian updating`);
             setTimeout(hideAnalysisStatus, 2000);
+        } else {
+            throw new Error('No content in AI response');
         }
         
     } catch (error) {
@@ -166,15 +194,15 @@ async function streamAdvancedAnalysis(event, tavilyResults) {
     }
 }
 
-function buildAdvancedAnalysisPrompt(event, tavilyResults) {
+function buildAdvancedAnalysisPrompt(event, serperResults) {
     // Build comprehensive source context (minimum 10 sources)
-    const topSources = tavilyResults.slice(0, Math.max(10, tavilyResults.length));
+    const topSources = serperResults.slice(0, Math.max(10, serperResults.length));
     const sources = topSources.map((result, i) => 
         `[SOURCE ${i + 1}] ${result.title}
 URL: ${result.url}
 Published: ${result.publishedDate}
-Relevance Score: ${(result.score * 100).toFixed(1)}%
-Content: ${(result.text || '').substring(0, 1500)}
+${result.isNews ? 'Type: NEWS ARTICLE' : 'Type: WEB PAGE'}
+Snippet: ${(result.text || '').substring(0, 800)}
 ---`
     ).join('\n\n');
     
@@ -182,96 +210,112 @@ Content: ${(result.text || '').substring(0, 1500)}
     return `You are a professional forecasting analyst using rigorous statistical methods and multi-source evidence synthesis following the MIRAI research paper methodology.
 
 CRITICAL REQUIREMENTS:
-- You MUST cite at least 10 different sources in your analysis
-- Every major claim must reference specific sources by exact title
+- You MUST cite at least 10 different sources in your analysis (cite by exact title)
+- Every major claim must reference specific sources by title
 - Provide quantitative reasoning with statistical foundations
-- Use Bayesian updating when incorporating new evidence
+- Use Bayesian updating: show prior → posterior probability calculations
 - Consider base rates, historical precedents, and trend analysis
-- Show your probability calculations step-by-step
+- Show probability calculations step-by-step
 
-EVENT DETAILS:
+EVENT TO ANALYZE:
 Title: ${event.title}
 Market Data: Volume ${event.volume}, 24h Vol ${event.volume24h}, Liquidity ${event.liquidity}
 Closes: ${event.closeDate}
-Current Status: ${event.active ? 'Active' : 'Closed'}
+Current Status: ${event.active ? 'Active Market' : 'Closed Market'}
 
-AVAILABLE SOURCES (${topSources.length} high-quality sources from Tavily AI Search):
+AVAILABLE SOURCES (${topSources.length} high-quality Google Search results):
 ${sources}
 
-ANALYSIS FRAMEWORK (following MIRAI research methodology):
+ANALYSIS FRAMEWORK (MIRAI Research Methodology):
 
-**Base Rate Analysis**
-Start with the prior probability based on:
-- Historical frequency of similar events (cite specific data from sources)
-- Domain-specific base rates (reference industry statistics)
+**1. Base Rate Analysis**
+Establish prior probability from:
+- Historical frequency of similar events (cite specific data)
+- Domain-specific base rates (reference statistics from sources)
 - Reference class forecasting (compare to similar past events)
-Example: "Based on [SOURCE 1], similar events occur with X% frequency..."
+Format: "Based on [SOURCE X - exact title], the base rate for [event type] is Y%"
 
-**Multi-Source Evidence Synthesis**
-Systematically evaluate each source with Bayesian updating:
-- Source 1 (cite exact title): Key finding and reliability assessment
-  Prior: X% → Updated to Y% because [specific evidence]
-- Source 2 (cite exact title): How this updates our belief
-  Prior: Y% → Updated to Z% because [specific evidence]
-- Continue through at least 10 sources
-- Weight sources by: credibility (use relevance scores), recency, sample size
-- Identify consensus views vs. outlier predictions
+**2. Multi-Source Evidence Synthesis with Bayesian Updating**
+For each source, show explicit Bayesian updating:
 
-**Quantitative Probability Assessment**
-Show explicit Bayesian updating:
-- Starting probability (base rate): X%
-- After source 1: X% × [likelihood ratio] = Y%
-- After source 2: Y% × [likelihood ratio] = Z%
-- Continue through all major sources
-- Final probability with 95% confidence interval: [A%, B%]
+Source 1 Analysis:
+- Title: [exact source title]
+- Key finding: [specific data/fact]
+- Reliability: High/Medium/Low (explain why)
+- Bayesian update: Prior P₀ = X% → Posterior P₁ = Y%
+- Reasoning: [likelihood ratio calculation or qualitative update]
 
-**Statistical Indicators**
-- Trend direction and momentum (cite data)
-- Volatility measures (use market data: ${event.volume24h})
-- Correlation with related events/markets
-- Key leading indicators from sources
+Source 2 Analysis:
+- Title: [exact source title]
+- Key finding: [specific data/fact]
+- How it updates belief: P₁ = Y% → P₂ = Z%
+- Reasoning: [explain the update]
 
-**Risk Factors and Scenarios**
-Bull case (probability: X%): [specific scenario with evidence]
-Base case (probability: Y%): [most likely outcome with evidence]
-Bear case (probability: Z%): [downside scenario with evidence]
-Note: Probabilities must sum to 100%
+[Continue for at least 10 sources]
 
-**Temporal Considerations**
-- Days until event closes
-- How probability may shift as event approaches
-- Key catalysts or news to watch (cite sources)
+**3. Quantitative Probability Assessment**
+Final calculation chain:
+- Base rate (P₀): X%
+- After source 1: P₁ = X% × [likelihood] = Y%
+- After source 2: P₂ = Y% × [likelihood] = Z%
+- [continue through all sources]
+- Final probability: P_final with 95% CI: [low%, high%]
 
-**Confidence Assessment**
-- Data quality: High/Medium/Low (based on source scores)
-- Source agreement: Strong/Moderate/Weak (quantify % agreement)
+**4. Statistical Indicators**
+- Trend direction and momentum (cite specific data from sources)
+- Volatility measures (reference market data: vol=${event.volume}, 24h=${event.volume24h})
+- Leading indicators (from sources)
+- Signal strength: Strong/Medium/Weak
+
+**5. Risk Scenarios with Probabilities**
+- Bull case (P=X%): [best outcome scenario with evidence]
+- Base case (P=Y%): [most likely scenario with evidence]
+- Bear case (P=Z%): [worst case scenario with evidence]
+Note: X + Y + Z must = 100%
+
+**6. Temporal Analysis**
+- Current time to event close
+- How probability likely shifts as event approaches
+- Key catalysts to watch (from sources)
+- Information decay rate
+
+**7. Confidence Assessment**
+- Data quality: High/Medium/Low (based on source diversity)
+- Source agreement: Strong (>80% agree) / Moderate (50-80%) / Weak (<50%)
 - Overall confidence: High/Medium/Low
-- Key uncertainties remaining (be specific)
+- Key remaining uncertainties (be specific)
 
+**8. Source Citation Summary**
+List all sources used:
+1. [Source 1 title] - Used for: [what finding]
+2. [Source 2 title] - Used for: [what finding]
+[... through source 10+]
+
+REQUIRED JSON OUTPUT:
 \`\`\`json
 {
   "predictions": [
     {"outcome": "Yes", "probability": 0.XX, "confidence": "High/Medium/Low"},
     {"outcome": "No", "probability": 0.XX, "confidence": "High/Medium/Low"}
   ],
-  "insight": "Single most important factor affecting outcome based on source consensus",
+  "insight": "Single most important factor based on source consensus",
   "confidence": "High|Medium|Low",
   "sources_cited": 10,
   "base_rate": 0.XX,
-  "key_uncertainty": "Primary risk factor that could change prediction"
+  "key_uncertainty": "Primary risk that could change prediction"
 }
 \`\`\`
 
 MANDATORY REQUIREMENTS:
-✓ Cite at least 10 different sources by exact title throughout analysis
-✓ Show Bayesian updating calculations explicitly (prior → posterior)
-✓ Provide specific probabilities with statistical reasoning
-✓ Quantify uncertainty with confidence intervals
-✓ Use domain-specific metrics and indicators
+✓ Cite at least 10 sources by EXACT title
+✓ Show Bayesian updating: P₀ → P₁ → P₂ → ... → P_final
+✓ Include specific numbers and calculations
 ✓ Probabilities must sum to 1.0
-✓ No hedging - provide definitive statistical analysis
+✓ Provide 95% confidence interval
+✓ No hedging - give definitive analysis
+✓ List all cited sources at the end
 
-Remember: You have ${topSources.length} high-quality sources. Use them all strategically.`;
+You have ${topSources.length} high-quality sources. Use them systematically.`;
 }
 
 function parseStreamedResponse(text) {
@@ -356,23 +400,25 @@ function displayAnalysisMetrics(analysis) {
         analysis.key_uncertainty ? analysis.key_uncertainty.substring(0, 30) + '...' : '--';
 }
 
-function displaySources(tavilyResults) {
+function displaySources(serperResults) {
     const container = document.getElementById('sourcesList');
-    const sources = tavilyResults.slice(0, 15);
+    const sources = serperResults.slice(0, 15);
     
     document.getElementById('totalSources').textContent = sources.length;
     
     container.innerHTML = sources.map((source, i) => `
         <div class="source-card">
             <div class="source-header">
-                <div class="source-title">${escapeHtml(source.title)}</div>
+                <div class="source-title">
+                    ${source.isNews ? '📰 ' : ''}${escapeHtml(source.title)}
+                </div>
                 <a href="${escapeHtml(source.url)}" target="_blank" rel="noopener" class="source-link">View</a>
             </div>
             <div class="source-description">
                 ${escapeHtml((source.text || '').substring(0, 180))}...
             </div>
             <div class="source-citation">
-                [${i + 1}] ${new URL(source.url).hostname} • ${source.publishedDate} • Score: ${(source.score * 100).toFixed(0)}%
+                [${i + 1}] ${new URL(source.url).hostname} • ${source.publishedDate}
             </div>
         </div>
     `).join('');
