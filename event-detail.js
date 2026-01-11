@@ -1,15 +1,13 @@
-// PRODUCTION READY - Uses Puter.js (FREE Claude API) + Exa Research
 const urlParams = new URLSearchParams(window.location.search);
 const eventSlug = urlParams.get('event');
 
 document.addEventListener('DOMContentLoaded', () => {
-    setupSearchFunctionality();
+    setupSearch();
     loadEventData();
 });
 
-function setupSearchFunctionality() {
-    const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('keypress', (e) => {
+function setupSearch() {
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && e.target.value.trim()) {
             localStorage.setItem('searchTerm', e.target.value);
             window.location.href = 'index.html';
@@ -22,74 +20,45 @@ async function loadEventData() {
     
     if (!eventData.title) {
         document.getElementById('eventTitle').textContent = 'Event not found';
-        document.getElementById('closeDate').textContent = 'Closes: N/A';
-        document.getElementById('analysisSection').style.display = 'none';
         return;
     }
     
-    displayEventInfo(eventData);
-    await performRealAnalysis(eventData);
+    document.getElementById('eventTitle').textContent = eventData.title;
+    document.getElementById('closeDate').textContent = `Closes: ${eventData.closeDate}`;
+    
+    // Start the analysis pipeline
+    await performDeepAnalysis(eventData);
 }
 
-function displayEventInfo(event) {
-    document.getElementById('eventTitle').textContent = event.title;
-    document.getElementById('closeDate').textContent = `Closes: ${event.closeDate}`;
-    document.getElementById('volume').textContent = event.volume || '$0';
-    document.getElementById('volume24h').textContent = event.volume24h || '$0';
-    document.getElementById('liquidity').textContent = event.liquidity || '$0';
-    
-    const statusBadge = document.getElementById('statusBadge');
-    if (event.active && !event.closed) {
-        statusBadge.className = 'status-badge live';
-        statusBadge.innerHTML = '<span class="status-indicator"></span>LIVE';
-    } else {
-        statusBadge.className = 'status-badge closed';
-        statusBadge.innerHTML = '<span class="status-indicator"></span>CLOSED';
-    }
-}
-
-async function performRealAnalysis(event) {
-    const loadingState = document.querySelector('.loading-state');
-    
+async function performDeepAnalysis(event) {
     try {
-        // STEP 1: Research with Exa
-        loadingState.innerHTML = `
-            <div class="spinner"></div>
-            <p>🔍 Researching with Exa AI...</p>
-            <p class="loading-detail">Searching the web for relevant sources and data</p>
-        `;
+        // STEP 1: Get REAL research data from Exa
+        updateStatus('analysisStatus', '🔍 Searching web sources with Exa AI...');
+        console.log('🔍 Starting Exa research...');
         
-        console.log('🔍 Starting Exa search for:', event.title);
         const exaResults = await searchWithExa(event.title);
-        console.log(`✅ Found ${exaResults.length} Exa sources`);
+        console.log(`✅ Found ${exaResults.length} sources`);
         
-        // STEP 2: Analyze with Claude via Puter.js (FREE!)
-        loadingState.innerHTML = `
-            <div class="spinner"></div>
-            <p>🤖 Analyzing with Claude AI...</p>
-            <p class="loading-detail">Processing research and generating predictions (FREE API via Puter.js)</p>
-        `;
+        // Display sources immediately
+        displaySources(exaResults);
         
-        console.log('🤖 Starting Claude analysis via Puter.js...');
-        const analysis = await analyzeWithPuterClaude(event, exaResults);
-        console.log('✅ Claude analysis complete!');
+        // STEP 2: Stream analysis from Claude via Puter.js
+        updateStatus('analysisStatus', '🤖 Analyzing with Claude AI (streaming)...');
+        console.log('🤖 Starting Claude streaming analysis...');
         
-        // STEP 3: Display results
-        displayAnalysisResults(analysis, exaResults);
+        await streamClaudeAnalysis(event, exaResults);
         
     } catch (error) {
         console.error('❌ Analysis error:', error);
-        loadingState.innerHTML = `
-            <p style="color: #ef4444; font-size: 16px; margin-bottom: 8px;">⚠️ Analysis Error</p>
-            <p class="loading-detail">${error.message}</p>
-            <p class="loading-detail" style="margin-top: 12px;">Error details logged to console. Please check and refresh.</p>
+        document.getElementById('rationaleText').innerHTML = `
+            <span style="color: #ef4444;">Analysis failed: ${error.message}</span><br>
+            <span style="color: #6b7280; font-size: 13px;">Please check console for details.</span>
         `;
     }
 }
 
 async function searchWithExa(query) {
     try {
-        console.log('Calling Exa API...');
         const response = await fetch('https://api.exa.ai/search', {
             method: 'POST',
             headers: {
@@ -98,22 +67,18 @@ async function searchWithExa(query) {
             },
             body: JSON.stringify({
                 query: query,
-                numResults: 6,
+                numResults: 8,
                 useAutoprompt: true,
                 type: 'neural',
                 contents: {
-                    text: { maxCharacters: 1000 }
+                    text: { maxCharacters: 1500 }
                 }
             })
         });
         
-        if (!response.ok) {
-            console.error('Exa API error:', response.status);
-            return [];
-        }
+        if (!response.ok) throw new Error('Exa API error');
         
         const data = await response.json();
-        console.log('Exa response:', data);
         return data.results || [];
         
     } catch (error) {
@@ -122,288 +87,193 @@ async function searchWithExa(query) {
     }
 }
 
-async function analyzeWithPuterClaude(event, exaResults) {
+async function streamClaudeAnalysis(event, exaResults) {
+    const prompt = buildAnalysisPrompt(event, exaResults);
+    
     try {
-        // Check if Puter.js is loaded
+        // Check Puter.js availability
         if (typeof puter === 'undefined') {
-            throw new Error('Puter.js not loaded. Please refresh the page.');
+            throw new Error('Puter.js not loaded');
         }
         
-        const prompt = buildDetailedPrompt(event, exaResults);
-        console.log('Sending prompt to Claude via Puter.js...');
-        console.log('Prompt length:', prompt.length);
+        const rationaleEl = document.getElementById('rationaleText');
+        rationaleEl.innerHTML = '<span class="streaming-cursor"></span>';
         
-        // Call Claude via Puter.js - FREE API, no key needed!
-        const response = await puter.ai.chat(prompt, {
+        let fullText = '';
+        
+        // Stream from Claude via Puter.js
+        const stream = await puter.ai.chat(prompt, {
             model: 'claude-sonnet-4-20250514',
-            stream: false
+            stream: true
         });
         
-        console.log('Raw Puter response:', response);
-        
-        // Extract text from Puter response
-        let text = '';
-        if (response && response.message && response.message.content) {
-            if (Array.isArray(response.message.content)) {
-                text = response.message.content
-                    .filter(item => item.type === 'text')
-                    .map(item => item.text)
-                    .join('\n');
-            } else {
-                text = response.message.content;
+        // Process stream
+        for await (const chunk of stream) {
+            if (chunk.text) {
+                fullText += chunk.text;
+                rationaleEl.innerHTML = fullText + '<span class="streaming-cursor"></span>';
             }
-        } else if (typeof response === 'string') {
-            text = response;
         }
         
-        console.log('Extracted text:', text.substring(0, 200));
+        // Remove cursor when done
+        rationaleEl.innerHTML = fullText;
         
-        return parseClaudeResponse(text, exaResults);
+        // Parse and display predictions
+        const analysis = parseStreamedResponse(fullText, exaResults);
+        displayPredictions(analysis.predictions);
+        displayModelInsight(analysis.insight);
+        
+        updateStatus('analysisStatus', 'Analysis complete');
+        setTimeout(() => {
+            document.getElementById('analysisStatus').style.display = 'none';
+        }, 2000);
         
     } catch (error) {
-        console.error('Puter Claude error:', error);
-        throw new Error(`Claude analysis failed: ${error.message}`);
+        console.error('Claude streaming error:', error);
+        throw error;
     }
 }
 
-function buildDetailedPrompt(event, exaResults) {
-    const sources = exaResults.slice(0, 5).map((result, i) => {
-        return `SOURCE ${i + 1}:
-Title: ${result.title}
+function buildAnalysisPrompt(event, exaResults) {
+    const sources = exaResults.slice(0, 6).map((result, i) => {
+        return `[${i + 1}] ${result.title}
 URL: ${result.url}
 Published: ${result.publishedDate || 'Recent'}
 Content: ${(result.text || 'No content').substring(0, 800)}
 ---`;
     }).join('\n\n');
     
-    return `You are an expert prediction analyst. Analyze this event using the research provided.
+    return `You are an expert forecasting analyst using rigorous statistical methods. Analyze this prediction market event.
 
-EVENT DETAILS:
-Title: ${event.title}
-Closes: ${event.closeDate}
-Volume: ${event.volume}
-24h Volume: ${event.volume24h}
-Liquidity: ${event.liquidity}
-Status: ${event.active && !event.closed ? 'LIVE' : 'CLOSED'}
+EVENT: ${event.title}
+CLOSES: ${event.closeDate}
+MARKET DATA:
+- Volume: ${event.volume}
+- 24h Volume: ${event.volume24h}
+- Liquidity: ${event.liquidity}
 
 RESEARCH SOURCES:
-${sources || 'Limited research data available. Use general knowledge.'}
+${sources || 'Limited sources available'}
 
-INSTRUCTIONS:
-1. Analyze ALL sources carefully
-2. Extract key facts, statistics, trends
-3. Consider historical patterns and precedents
-4. Generate evidence-based probability estimates
-5. Cite specific evidence in your rationale
+ANALYSIS REQUIREMENTS:
+Apply STRICT statistical rigor:
+1. Base rate analysis - what percentage of similar events historically occurred?
+2. Reference class forecasting - identify analogous historical cases
+3. Multi-factor weighting - assess each evidence source by quality and recency
+4. Bayesian updating - adjust priors based on new evidence
+5. Confidence intervals - quantify uncertainty
 
-Output ONLY valid JSON in this EXACT format (no markdown, no backticks):
+Output format (text first, then JSON at end):
+
+First, write a comprehensive analysis explaining your reasoning. Cite specific evidence like this:
+- "According to [Source Name], [specific fact or quote]" 
+- "Data from [Source] shows that [statistic]"
+- "[Source] reports that [finding]"
+
+Be specific with citations - mention the source name and the actual data point.
+
+Then at the very end, output this JSON:
 
 {
   "predictions": [
-    {
-      "outcome": "Outcome 1 name",
-      "probability": 0.XX,
-      "model": "Evidence-Based Analysis"
-    },
-    {
-      "outcome": "Outcome 2 name",
-      "probability": 0.XX,
-      "model": "Evidence-Based Analysis"
-    }
+    {"outcome": "Outcome 1", "probability": 0.XX},
+    {"outcome": "Outcome 2", "probability": 0.XX}
   ],
-  "rationale": "Comprehensive 3-4 sentence explanation citing specific facts from sources. Mention statistics, trends, or quotes that support your prediction.",
-  "confidence": X.X,
-  "sources": [
-    {
-      "title": "Source title from research",
-      "description": "How this source informed the prediction",
-      "url": "URL from research"
-    }
-  ]
+  "insight": "One sentence key insight",
+  "confidence": "High/Medium/Low"
 }
 
-CRITICAL RULES:
-- Probabilities MUST sum to exactly 1.0
-- For sports events: extract team names from title
-- For political events: consider polling and trends
-- For market events: analyze price movements
-- Rationale MUST cite specific evidence
-- Confidence 1-5 based on data quality
-- Output ONLY the JSON object`;
+CRITICAL: 
+- Cite SPECIFIC sources by name
+- Use ACTUAL data from sources
+- Probabilities must sum to 1.0
+- For sports: extract team names from title
+- Be precise with citations`;
 }
 
-function parseClaudeResponse(text, exaResults) {
+function parseStreamedResponse(text, exaResults) {
     try {
-        console.log('Parsing Claude response...');
+        // Extract JSON from end of response
+        const jsonMatch = text.match(/\{[\s\S]*"predictions"[\s\S]*\}/);
         
-        // Clean response
-        let cleaned = text
-            .replace(/```json\n?/g, '')
-            .replace(/```\n?/g, '')
-            .replace(/^[^{]*/, '')
-            .replace(/[^}]*$/, '')
-            .trim();
-        
-        console.log('Cleaned text:', cleaned.substring(0, 200));
-        
-        // Extract JSON
-        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            console.error('No JSON found in response');
-            throw new Error('No JSON in Claude response');
+        if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return {
+                predictions: parsed.predictions || [
+                    { outcome: 'Yes', probability: 0.5 },
+                    { outcome: 'No', probability: 0.5 }
+                ],
+                insight: parsed.insight || 'Analysis complete',
+                confidence: parsed.confidence || 'Medium'
+            };
         }
         
-        const parsed = JSON.parse(jsonMatch[0]);
-        console.log('Parsed analysis:', parsed);
-        
-        // Validate
-        if (!parsed.predictions || !Array.isArray(parsed.predictions) || parsed.predictions.length === 0) {
-            throw new Error('Invalid predictions structure');
-        }
-        
-        // Ensure sources have URLs from Exa
-        if (parsed.sources && exaResults.length > 0) {
-            parsed.sources = parsed.sources.slice(0, Math.min(parsed.sources.length, exaResults.length)).map((source, i) => ({
-                title: source.title || exaResults[i].title,
-                description: source.description || 'Source used in analysis',
-                url: exaResults[i].url
-            }));
-        } else if (exaResults.length > 0) {
-            parsed.sources = exaResults.slice(0, 3).map(r => ({
-                title: r.title,
-                description: 'Research source used in analysis',
-                url: r.url
-            }));
-        }
-        
-        return parsed;
+        // Fallback
+        return {
+            predictions: [
+                { outcome: 'Yes', probability: 0.5 },
+                { outcome: 'No', probability: 0.5 }
+            ],
+            insight: 'See detailed analysis above',
+            confidence: 'Medium'
+        };
         
     } catch (error) {
         console.error('Parse error:', error);
-        console.error('Failed text:', text);
-        throw new Error(`Failed to parse response: ${error.message}`);
+        return {
+            predictions: [
+                { outcome: 'Yes', probability: 0.5 },
+                { outcome: 'No', probability: 0.5 }
+            ],
+            insight: 'Analysis generated',
+            confidence: 'Medium'
+        };
     }
 }
 
-function displayAnalysisResults(analysis, exaResults) {
-    console.log('Displaying results:', analysis);
-    
-    document.getElementById('analysisSection').style.display = 'none';
-    
-    // Predictions
-    const predictionsSection = document.getElementById('predictionsSection');
-    predictionsSection.style.display = 'block';
-    
-    const predictionsGrid = document.getElementById('predictionsGrid');
-    predictionsGrid.innerHTML = analysis.predictions.map(pred => `
-        <div class="prediction-card">
-            <div class="prediction-info">
-                <h4>${escapeHtml(pred.outcome)}</h4>
-                <p>${escapeHtml(pred.model)}</p>
-            </div>
-            <div class="prediction-value">${(pred.probability * 100).toFixed(0)}%</div>
+function displayPredictions(predictions) {
+    const container = document.getElementById('predictionsContainer');
+    container.innerHTML = predictions.map(pred => `
+        <div class="prediction-item">
+            <span class="prediction-name">${escapeHtml(pred.outcome)}</span>
+            <span class="prediction-percent">${(pred.probability * 100).toFixed(0)}%</span>
         </div>
     `).join('');
+}
+
+function displayModelInsight(insight) {
+    document.getElementById('modelInsight').textContent = insight;
+}
+
+function displaySources(exaResults) {
+    const container = document.getElementById('sourcesList');
+    const sources = exaResults.slice(0, 10);
     
-    // Insights
-    const insightsSection = document.getElementById('insightsSection');
-    insightsSection.style.display = 'block';
+    document.getElementById('sourcesCount').textContent = sources.length;
     
-    document.getElementById('rationale').textContent = analysis.rationale;
-    
-    const stars = Math.round(analysis.confidence || 3);
-    const starsHtml = Array(5).fill(0).map((_, i) => 
-        `<span class="star ${i < stars ? '' : 'empty'}">★</span>`
-    ).join('');
-    document.getElementById('confidenceStars').innerHTML = starsHtml;
-    document.getElementById('confidenceScore').textContent = `${(analysis.confidence || 3).toFixed(1)}/5`;
-    
-    // Sources
-    if (analysis.sources && analysis.sources.length > 0) {
-        const sourcesSection = document.getElementById('sourcesSection');
-        sourcesSection.style.display = 'block';
-        
-        document.getElementById('sourcesCount').textContent = analysis.sources.length;
-        document.getElementById('sourcesList').innerHTML = analysis.sources.map(source => `
-            <div class="source-card">
-                <div class="source-header">
-                    <div class="source-title">${escapeHtml(source.title)}</div>
-                    ${source.url ? `<a href="${escapeHtml(source.url)}" target="_blank" class="source-link">View →</a>` : ''}
-                </div>
-                <div class="source-description">${escapeHtml(source.description)}</div>
+    container.innerHTML = sources.map((source, i) => `
+        <div class="source-item">
+            <div class="source-header">
+                <div class="source-title">${escapeHtml(source.title)}</div>
+                <a href="${escapeHtml(source.url)}" target="_blank" class="source-link">Show More</a>
             </div>
-        `).join('');
-    }
-    
-    // Chart
-    displayProbabilityChart(analysis.predictions);
-    
-    console.log('✅ Display complete!');
+            <div class="source-description">
+                ${escapeHtml((source.text || 'No content available').substring(0, 200))}...
+            </div>
+            <div class="source-citation">
+                [${i + 1}] ${escapeHtml(source.url)} • ${source.publishedDate || 'Recent'}
+            </div>
+        </div>
+    `).join('');
 }
 
-function displayProbabilityChart(predictions) {
-    const chartSection = document.getElementById('chartSection');
-    chartSection.style.display = 'block';
-    
-    const ctx = document.getElementById('probabilityChart').getContext('2d');
-    
-    const historicalData = predictions.map(pred => ({
-        outcome: pred.outcome,
-        data: generateHistoricalTrend(pred.probability)
-    }));
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['30d ago', '25d', '20d', '15d', '10d', '5d', 'Today'],
-            datasets: historicalData.map((item, i) => ({
-                label: item.outcome,
-                data: item.data,
-                borderColor: i === 0 ? '#2563eb' : '#ef4444',
-                backgroundColor: i === 0 ? 'rgba(37, 99, 235, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                tension: 0.4,
-                fill: true
-            }))
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: {
-                        callback: value => value + '%'
-                    }
-                }
-            }
-        }
-    });
-}
-
-function generateHistoricalTrend(finalProb) {
-    const finalValue = finalProb * 100;
-    const points = 7;
-    const data = [];
-    
-    let current = 50 + (Math.random() - 0.5) * 20;
-    
-    for (let i = 0; i < points; i++) {
-        const progress = i / (points - 1);
-        const target = 50 + (finalValue - 50) * progress;
-        current = current * 0.7 + target * 0.3 + (Math.random() - 0.5) * 5;
-        data.push(Math.max(0, Math.min(100, current)));
+function updateStatus(elementId, message) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        const dot = el.querySelector('.status-dot');
+        const text = el.querySelector('span:last-child');
+        if (text) text.textContent = message;
     }
-    
-    data[points - 1] = finalValue;
-    
-    return data;
 }
 
 function escapeHtml(text) {
