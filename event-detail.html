@@ -3,23 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Prediction Analysis</title>
+    <title>Event Analysis</title>
     <link rel="stylesheet" href="event-detail.css">
-    <!-- Puter.js - FREE Claude API access -->
     <script src="https://js.puter.com/v2/"></script>
-    <style>
-        /* Ensure header is always visible */
-        .top-bar {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body>
     <div class="top-bar">
         <div class="header-container">
-            <a href="index.html" class="back-button">
+            <a href="index.html" class="back-link">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -27,8 +19,8 @@
             </a>
             <div class="logo">The Predictive Intelligence Company</div>
             <div class="search-wrapper">
-                <div class="search-container">
-                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div style="position: relative;">
+                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
@@ -39,77 +31,80 @@
     </div>
 
     <div class="main-content">
+        <!-- Event Title -->
         <div class="event-header">
-            <div class="status-section">
-                <span class="category" id="categoryBadge">Sports</span>
-                <span class="status-badge live" id="statusBadge">
-                    <span class="status-indicator"></span>
-                    LIVE
-                </span>
-            </div>
-            <h1 class="event-title" id="eventTitle">Loading...</h1>
+            <h1 id="eventTitle">Loading...</h1>
             <div class="event-meta">
                 <span id="closeDate">Closes: Loading...</span>
             </div>
         </div>
 
-        <div class="stats-bar">
-            <div class="stat-item">
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
                 <div class="stat-label">Volume</div>
                 <div class="stat-value" id="volume">$0</div>
             </div>
-            <div class="stat-item">
+            <div class="stat-card">
                 <div class="stat-label">24h Volume</div>
                 <div class="stat-value" id="volume24h">$0</div>
             </div>
-            <div class="stat-item">
+            <div class="stat-card">
                 <div class="stat-label">Liquidity</div>
                 <div class="stat-value" id="liquidity">$0</div>
             </div>
         </div>
 
-        <div class="analysis-section" id="analysisSection">
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Analyzing event with AI agents...</p>
-                <p class="loading-detail">Gathering historical data, news sources, and statistical patterns</p>
-            </div>
-        </div>
-
-        <div class="predictions-section" id="predictionsSection" style="display: none;">
-            <h2>AI Predictions</h2>
-            <div class="predictions-grid" id="predictionsGrid"></div>
-        </div>
-
-        <div class="insights-section" id="insightsSection" style="display: none;">
-            <h2>Model Insights</h2>
-            <div class="insights-content">
-                <div class="insight-box">
-                    <h3>Prediction Rationale</h3>
-                    <p id="rationale">Loading analysis...</p>
+        <!-- Two Column Layout -->
+        <div class="content-layout">
+            <!-- LEFT SIDEBAR -->
+            <div class="sidebar">
+                <!-- Prediction Box -->
+                <div class="sidebar-section">
+                    <div class="section-title">Prediction</div>
+                    <div class="prediction-list" id="predictionsList"></div>
                 </div>
-                <div class="confidence-rating">
-                    <h3>Confidence Rating</h3>
-                    <div class="rating-display">
-                        <div class="stars" id="confidenceStars"></div>
-                        <span id="confidenceScore">0.0/5</span>
+
+                <!-- Model Insight Box -->
+                <div class="sidebar-section">
+                    <div class="section-title">Model Insight</div>
+                    <div class="model-insight-text" id="modelInsight">Loading analysis...</div>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT AREA -->
+            <div class="main-area">
+                <!-- Chart Section -->
+                <div class="content-card">
+                    <h2>The Predicted Value (%)</h2>
+                    <div id="chartContainer">
+                        <div class="loading-container">
+                            <div class="spinner"></div>
+                            <div class="loading-text">Analyzing event with AI agents...</div>
+                            <div class="loading-detail">Gathering historical data, news sources, and statistical patterns</div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Analysis Section -->
+                <div class="content-card">
+                    <h2>Insights/Prediction Rationale</h2>
+                    <div class="status-indicator" id="analysisStatus">
+                        <span class="status-dot"></span>
+                        <span>Analyzing with AI...</span>
+                    </div>
+                    <div class="analysis-content" id="analysisText"></div>
+                </div>
+
+                <!-- Sources Section -->
+                <div class="content-card">
+                    <h2>Sources (<span id="sourcesCount">0</span>)</h2>
+                    <div class="sources-list" id="sourcesList"></div>
+                </div>
             </div>
-        </div>
-
-        <div class="sources-section" id="sourcesSection" style="display: none;">
-            <h2>Sources Used (<span id="sourcesCount">0</span>)</h2>
-            <div class="sources-list" id="sourcesList"></div>
-        </div>
-
-        <div class="chart-section" id="chartSection" style="display: none;">
-            <h2>Historical Probability Trends</h2>
-            <canvas id="probabilityChart"></canvas>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="event-detail.js"></script>
 </body>
 </html>
