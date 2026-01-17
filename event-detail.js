@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+let conversationHistory = [];
+let currentEventData = null;
+
 function setupSearch() {
     document.getElementById('searchInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && e.target.value.trim()) {
@@ -30,24 +33,169 @@ function setupSearch() {
             const eventData = JSON.parse(localStorage.getItem('currentEvent') || '{}');
             if (eventData.title) {
                 refreshBtn.disabled = true;
+                const svg = refreshBtn.querySelector('svg');
+                if (svg) {
+                    svg.classList.add('animate-spin');
+                    svg.style.animation = 'spin 1s linear infinite';
+                }
+                const originalHTML = refreshBtn.innerHTML;
                 refreshBtn.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
-                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    <svg class="h-4 w-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
                     Refreshing...
                 `;
+                
                 await performAIAnalysis(eventData, true);
+                
                 refreshBtn.disabled = false;
-                refreshBtn.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                    </svg>
-                    Refresh
-                `;
+                refreshBtn.innerHTML = originalHTML;
                 updateLastUpdateTime();
             }
         });
     }
+    
+    // Setup follow-up conversation
+    setupConversation();
+}
+
+function setupConversation() {
+    const questionInput = document.getElementById('questionInput');
+    const sendBtn = document.getElementById('sendQuestionBtn');
+    
+    if (questionInput && sendBtn) {
+        const sendQuestion = async () => {
+            const question = questionInput.value.trim();
+            if (!question) return;
+            
+            // Add user message
+            addMessageToConversation('user', question);
+            questionInput.value = '';
+            sendBtn.disabled = true;
+            
+            // Get AI response
+            await getAIResponse(question);
+            
+            sendBtn.disabled = false;
+        };
+        
+        sendBtn.addEventListener('click', sendQuestion);
+        questionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendQuestion();
+            }
+        });
+    }
+}
+
+function addMessageToConversation(role, content) {
+    const container = document.getElementById('conversationContainer');
+    if (!container) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'flex items-start gap-3';
+    
+    if (role === 'user') {
+        messageDiv.innerHTML = `
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground text-xs font-medium">You</div>
+            <div class="flex-1 rounded-lg bg-primary/10 p-3 text-sm">${escapeHtml(content)}</div>
+        `;
+    } else {
+        messageDiv.innerHTML = `
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">AI</div>
+            <div class="flex-1 rounded-lg bg-muted p-3 text-sm">${escapeHtml(content)}</div>
+        `;
+    }
+    
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
+    
+    conversationHistory.push({ role, content });
+}
+
+async function getAIResponse(question) {
+    if (!currentEventData) {
+        currentEventData = JSON.parse(localStorage.getItem('currentEvent') || '{}');
+    }
+    
+    const container = document.getElementById('conversationContainer');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'flex items-start gap-3';
+    loadingDiv.innerHTML = `
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">AI</div>
+        <div class="flex-1 rounded-lg bg-muted p-3 text-sm">
+            <div class="flex items-center gap-2">
+                <div class="h-2 w-2 animate-pulse rounded-full bg-primary"></div>
+                <span class="text-muted-foreground">Thinking...</span>
+            </div>
+        </div>
+    `;
+    container.appendChild(loadingDiv);
+    container.scrollTop = container.scrollHeight;
+    
+    try {
+        const context = buildConversationContext();
+        const prompt = `You are an AI assistant helping users understand a prediction market event analysis.
+
+EVENT: "${currentEventData.title}"
+${context}
+
+CONVERSATION HISTORY:
+${conversationHistory.slice(-5).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+
+USER QUESTION: ${question}
+
+Provide a helpful, concise answer based on the analysis and conversation context.`;
+
+        if (typeof puter !== 'undefined' && puter.ai && puter.ai.chat) {
+            const stream = await puter.ai.chat(prompt, { model: 'gpt-4', stream: true });
+            let fullResponse = '';
+            
+            loadingDiv.remove();
+            const responseDiv = document.createElement('div');
+            responseDiv.className = 'flex items-start gap-3';
+            responseDiv.innerHTML = `
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">AI</div>
+                <div class="flex-1 rounded-lg bg-muted p-3 text-sm" id="aiResponseText"></div>
+            `;
+            container.appendChild(responseDiv);
+            const responseTextEl = document.getElementById('aiResponseText');
+            
+            if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
+                for await (const chunk of stream) {
+                    if (chunk && chunk.text) {
+                        fullResponse += chunk.text;
+                        responseTextEl.textContent = fullResponse;
+                        container.scrollTop = container.scrollHeight;
+                    }
+                }
+            } else if (stream && stream.text) {
+                fullResponse = stream.text;
+                responseTextEl.textContent = fullResponse;
+            }
+            
+            conversationHistory.push({ role: 'assistant', content: fullResponse });
+        } else {
+            throw new Error('AI not available');
+        }
+    } catch (error) {
+        console.error('AI response error:', error);
+        loadingDiv.remove();
+        addMessageToConversation('assistant', 'I apologize, but I\'m having trouble processing your question right now. Please try again later.');
+    }
+}
+
+function buildConversationContext() {
+    const analysisContent = document.getElementById('analysisContent')?.textContent || '';
+    const predictions = Array.from(document.querySelectorAll('#predictionRows > div')).map(row => {
+        const label = row.querySelector('.row-label')?.textContent || '';
+        const value = row.querySelector('.row-value')?.textContent || '';
+        return `${label}: ${value}`;
+    }).join(', ');
+    
+    return `ANALYSIS SUMMARY: ${analysisContent.substring(0, 500)}
+PREDICTIONS: ${predictions}`;
 }
 
 function updateLastUpdateTime() {
@@ -60,6 +208,7 @@ function updateLastUpdateTime() {
 
 async function loadEventData() {
     const eventData = JSON.parse(localStorage.getItem('currentEvent') || '{}');
+    currentEventData = eventData;
     
     if (!eventData.title) {
         document.getElementById('eventTitle').textContent = 'Event not found';
@@ -92,9 +241,9 @@ async function loadEventData() {
 function displayLoadingPredictions() {
     const container = document.getElementById('predictionRows');
     container.innerHTML = `
-        <div class="table-row">
-            <span class="row-label">Analyzing...</span>
-            <span class="row-value">--</span>
+        <div class="flex items-center justify-between px-4 py-3 text-sm">
+            <span class="text-muted-foreground">Analyzing...</span>
+            <span class="text-muted-foreground">--</span>
         </div>
     `;
 }
@@ -107,8 +256,8 @@ async function performAIAnalysis(event, isUpdate = false) {
         console.log('Starting real-time analysis for:', event.title);
         
         if (!isUpdate) {
-            // Step 1: Show thinking
-            showThinkingPhase(event);
+        // Step 1: Show thinking
+        showThinkingPhase(event);
         }
         
         // Step 2: Show searching with multiple sources
@@ -136,10 +285,10 @@ async function performAIAnalysis(event, isUpdate = false) {
         
         // Hide status after delay (only if not updating)
         if (!isUpdate) {
-            setTimeout(() => {
-                const statusEl = document.getElementById('analysisStatus');
-                if (statusEl) statusEl.style.display = 'none';
-            }, 2000);
+        setTimeout(() => {
+            const statusEl = document.getElementById('analysisStatus');
+                if (statusEl) statusEl.classList.add('hidden');
+        }, 2000);
         } else {
             // For updates, show a brief "Updated" indicator
             showUpdateIndicator();
@@ -148,10 +297,10 @@ async function performAIAnalysis(event, isUpdate = false) {
     } catch (error) {
         console.error('Analysis error:', error);
         if (!isUpdate) {
-            document.getElementById('analysisContent').innerHTML = `
-                <p style="color: #ef4444;"><strong>Error:</strong> ${error.message}</p>
+        document.getElementById('analysisContent').innerHTML = `
+            <p style="color: #ef4444;"><strong>Error:</strong> ${error.message}</p>
                 <p style="color: #6b7280;">Retrying with available sources...</p>
-            `;
+        `;
         }
         
         // Fallback to basic predictions
@@ -237,7 +386,7 @@ function showThinkingPhase(event) {
 
 function showSearchingPhase(event) {
     const searchingSection = document.getElementById('searchingSection');
-    searchingSection.style.display = 'block';
+    searchingSection.classList.remove('hidden');
     
     const searchQueries = document.getElementById('searchQueries');
     searchQueries.innerHTML = ''; // Clear previous queries
@@ -253,54 +402,45 @@ function showSearchingPhase(event) {
     queries.forEach((query, i) => {
         setTimeout(() => {
             const el = document.createElement('div');
-            el.className = 'search-query shimmer-active';
+            el.className = 'flex items-center gap-2 rounded-md border bg-muted/50 p-2 text-xs';
             el.innerHTML = `
-                <svg class="search-icon-small" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
+                <svg class="h-3 w-3 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <span>${escapeHtml(query.text)}</span>
-                <span style="margin-left: auto; font-size: 11px; color: #9ca3af;">${query.source}</span>
+                <span class="flex-1 break-words">${escapeHtml(query.text)}</span>
+                <span class="shrink-0 text-muted-foreground">${query.source}</span>
             `;
             searchQueries.appendChild(el);
-            setTimeout(() => el.classList.remove('shimmer-active'), 1200);
         }, i * 100);
     });
 }
 
 function showReviewingPhase(exaResults) {
     const reviewingSection = document.getElementById('reviewingSection');
-    reviewingSection.style.display = 'block';
+    reviewingSection.classList.remove('hidden');
     
     const reviewingSources = document.getElementById('reviewingSources');
     const topSources = exaResults.slice(0, 5);
     
     topSources.forEach((source, i) => {
         setTimeout(() => {
-            const domain = new URL(source.url).hostname.replace('www.', '');
+            const domain = source.url ? new URL(source.url).hostname.replace('www.', '') : 'unknown';
             const domainName = domain.split('.')[0];
             
             const el = document.createElement('div');
-            el.className = 'source-item shimmer-active';
-            
-            let faviconClass = 'default';
-            let faviconText = domainName.charAt(0).toUpperCase();
-            
-            if (domain.includes('youtube')) {
-                faviconClass = 'youtube';
-                faviconText = '▶';
-            }
+            el.className = 'flex items-start gap-3 rounded-md border bg-muted/50 p-2';
             
             el.innerHTML = `
-                <div class="source-favicon ${faviconClass}">${faviconText}</div>
-                <div class="source-info">
-                    <span class="source-title">${escapeHtml(source.title.substring(0, 55))}...</span>
-                    <div class="source-domain">${escapeHtml(domainName)}</div>
+                <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-medium">
+                    ${domainName.charAt(0).toUpperCase()}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="truncate text-xs font-medium">${escapeHtml(source.title.substring(0, 55))}${source.title.length > 55 ? '...' : ''}</div>
+                    <div class="text-xs text-muted-foreground">${escapeHtml(domainName)}</div>
                 </div>
             `;
             
             reviewingSources.appendChild(el);
-            setTimeout(() => el.classList.remove('shimmer-active'), 1500);
         }, i * 100);
     });
 }
@@ -789,9 +929,9 @@ function formatAnalysisText(text) {
 function displayPredictions(predictions) {
     const container = document.getElementById('predictionRows');
     container.innerHTML = predictions.map(pred => `
-        <div class="table-row">
-            <span class="row-label">${escapeHtml(pred.outcome)}</span>
-            <span class="row-value">${(pred.probability * 100).toFixed(0)}%</span>
+        <div class="flex items-center justify-between px-4 py-3 text-sm">
+            <span class="font-medium">${escapeHtml(pred.outcome)}</span>
+            <span class="font-semibold">${(pred.probability * 100).toFixed(0)}%</span>
         </div>
     `).join('');
 }
@@ -812,15 +952,13 @@ function displaySources(allSources) {
         const isRecent = source.isRecent ? '🆕' : '';
         
         return `
-        <div class="source-card">
-            <div class="source-header">
-                <div class="source-title">${escapeHtml(source.title)} ${isRecent}</div>
-                ${source.url ? `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener" class="source-link">View</a>` : ''}
+        <div class="rounded-md border bg-muted/50 p-4">
+            <div class="mb-2 flex items-start justify-between gap-2">
+                <h4 class="flex-1 text-sm font-medium break-words">${escapeHtml(source.title)} ${isRecent}</h4>
+                ${source.url ? `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener" class="shrink-0 text-xs text-primary underline hover:no-underline">View</a>` : ''}
             </div>
-            <div class="source-description">
-                ${escapeHtml((source.text || '').substring(0, 200))}${(source.text || '').length > 200 ? '...' : ''}
-            </div>
-            <div class="source-citation">
+            <p class="mb-2 text-xs text-muted-foreground line-clamp-2">${escapeHtml((source.text || '').substring(0, 200))}${(source.text || '').length > 200 ? '...' : ''}</p>
+            <div class="text-xs text-muted-foreground">
                 [${i + 1}] ${escapeHtml(domain)} • ${sourceLabel} ${source.relevanceScore ? `(${(source.relevanceScore * 100).toFixed(0)}% relevant)` : ''}
             </div>
         </div>
@@ -831,16 +969,15 @@ function displaySources(allSources) {
 function showUpdateIndicator() {
     const statusEl = document.getElementById('analysisStatus');
     if (statusEl) {
-        statusEl.style.display = 'block';
+        statusEl.classList.remove('hidden');
         const updateMsg = document.createElement('div');
-        updateMsg.className = 'update-indicator';
-        updateMsg.style.cssText = 'padding: 12px; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; color: #0369a1; font-size: 13px; margin-bottom: 16px;';
+        updateMsg.className = 'rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900';
         updateMsg.textContent = '🔄 Analysis updated with latest real-time data';
-        statusEl.insertBefore(updateMsg, statusEl.firstChild);
+        statusEl.querySelector('.p-6')?.insertBefore(updateMsg, statusEl.querySelector('.p-6').firstChild);
         
         setTimeout(() => {
             updateMsg.remove();
-            statusEl.style.display = 'none';
+            statusEl.classList.add('hidden');
         }, 3000);
     }
 }
