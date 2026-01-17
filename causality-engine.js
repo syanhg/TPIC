@@ -120,13 +120,15 @@ class CausalityEngine {
             });
         });
 
+        const nodesArray = Array.from(nodes.values());
+        
         this.graph = {
-            nodes: Array.from(nodes.values()),
+            nodes: nodesArray,
             edges: edges,
             metadata: {
                 totalSources: sources.length,
                 totalRelations: edges.length,
-                causalChains: this.findCausalChains(nodes, edges, eventId)
+                causalChains: this.findCausalChains(nodesArray, edges, eventId)
             }
         };
 
@@ -291,19 +293,33 @@ class CausalityEngine {
      * Find causal chains leading to the event
      */
     findCausalChains(nodes, edges, eventId) {
+        if (!nodes || !Array.isArray(nodes)) {
+            console.warn('findCausalChains: nodes is not an array', typeof nodes);
+            return [];
+        }
+        
         const chains = [];
-        const causeNodes = nodes.filter(n => n.type === 'factor');
+        const causeNodes = nodes.filter(n => n && n.type === 'factor');
+        
+        if (causeNodes.length === 0) {
+            console.log('No factor nodes found for causal chain analysis');
+            return [];
+        }
         
         causeNodes.forEach(cause => {
-            const path = this.findPathToEvent(cause.id, eventId, edges, []);
-            if (path.length > 1) {
-                chains.push({
-                    start: cause.id,
-                    end: eventId,
-                    path: path,
-                    length: path.length,
-                    strength: this.calculatePathStrength(path, edges)
-                });
+            try {
+                const path = this.findPathToEvent(cause.id, eventId, edges, []);
+                if (path.length > 1) {
+                    chains.push({
+                        start: cause.id,
+                        end: eventId,
+                        path: path,
+                        length: path.length,
+                        strength: this.calculatePathStrength(path, edges)
+                    });
+                }
+            } catch (error) {
+                console.warn('Error finding path for cause:', cause.id, error);
             }
         });
 
@@ -314,13 +330,17 @@ class CausalityEngine {
      * Find path from node to event using DFS
      */
     findPathToEvent(nodeId, eventId, edges, visited) {
+        if (!nodeId || !eventId) return [];
         if (nodeId === eventId) return [nodeId];
         if (visited.includes(nodeId)) return [];
 
         visited.push(nodeId);
-        const outgoing = edges.filter(e => e.source === nodeId);
+        if (!edges || !Array.isArray(edges)) return [];
+        
+        const outgoing = edges.filter(e => e && e.source === nodeId);
 
         for (const edge of outgoing) {
+            if (!edge || !edge.target) continue;
             const path = this.findPathToEvent(edge.target, eventId, edges, [...visited]);
             if (path.length > 0) {
                 return [nodeId, ...path];
@@ -334,11 +354,11 @@ class CausalityEngine {
      * Calculate strength of a causal path
      */
     calculatePathStrength(path, edges) {
-        if (path.length < 2) return 0;
+        if (!path || path.length < 2 || !edges || !Array.isArray(edges)) return 0;
 
         let strength = 1;
         for (let i = 0; i < path.length - 1; i++) {
-            const edge = edges.find(e => e.source === path[i] && e.target === path[i + 1]);
+            const edge = edges.find(e => e && e.source === path[i] && e.target === path[i + 1]);
             if (edge) {
                 strength *= edge.strength || 0.5;
             } else {
@@ -407,6 +427,7 @@ class CausalityEngine {
      * Check if node represents positive signal
      */
     isPositiveSignal(node, graph) {
+        if (!node || !node.label) return false;
         const text = (node.label || '').toLowerCase();
         const positiveWords = ['increase', 'rise', 'growth', 'success', 'positive', 'gain', 'improve', 'boost'];
         return positiveWords.some(word => text.includes(word));
@@ -416,6 +437,7 @@ class CausalityEngine {
      * Check if node represents negative signal
      */
     isNegativeSignal(node, graph) {
+        if (!node || !node.label) return false;
         const text = (node.label || '').toLowerCase();
         const negativeWords = ['decrease', 'fall', 'decline', 'failure', 'negative', 'loss', 'worsen', 'drop'];
         return negativeWords.some(word => text.includes(word));
@@ -450,7 +472,12 @@ class CausalityEngine {
      * Generate reasoning for prediction
      */
     generateReasoning(chain, pathNodes, graph) {
+        if (!pathNodes || pathNodes.length === 0) {
+            return 'No causal path identified';
+        }
+        
         const steps = pathNodes.map((node, idx) => {
+            if (!node || !node.label) return '';
             if (idx === 0) {
                 return `Factor: ${node.label}`;
             } else if (idx === pathNodes.length - 1) {
@@ -458,18 +485,24 @@ class CausalityEngine {
             } else {
                 return `→ ${node.label}`;
             }
-        }).join(' ');
+        }).filter(s => s.length > 0).join(' ');
 
-        return `Causal chain: ${steps}. Strength: ${(chain.strength * 100).toFixed(1)}%`;
+        const strength = chain && chain.strength ? (chain.strength * 100).toFixed(1) : '50.0';
+        return `Causal chain: ${steps}. Strength: ${strength}%`;
     }
 
     /**
      * Aggregate multiple predictions into final predictions
      */
     aggregatePredictions(predictions) {
+        if (!predictions || !Array.isArray(predictions) || predictions.length === 0) {
+            return this.generateFallbackPrediction({});
+        }
+        
         // Group by outcome
         const grouped = {};
         predictions.forEach(pred => {
+            if (!pred || !pred.outcome) return;
             const key = pred.outcome;
             if (!grouped[key]) {
                 grouped[key] = [];
@@ -477,28 +510,40 @@ class CausalityEngine {
             grouped[key].push(pred);
         });
 
+        if (Object.keys(grouped).length === 0) {
+            return this.generateFallbackPrediction({});
+        }
+
         // Calculate weighted average for each outcome
         const aggregated = Object.entries(grouped).map(([outcome, preds]) => {
-            const totalWeight = preds.reduce((sum, p) => sum + p.confidence, 0);
+            if (!preds || preds.length === 0) return null;
+            
+            const totalWeight = preds.reduce((sum, p) => sum + (p.confidence || 0.5), 0);
+            if (totalWeight === 0) return null;
+            
             const weightedProb = preds.reduce((sum, p) => 
-                sum + (p.probability * p.confidence), 0
+                sum + ((p.probability || 0.5) * (p.confidence || 0.5)), 0
             ) / totalWeight;
 
-            const avgConfidence = preds.reduce((sum, p) => sum + p.confidence, 0) / preds.length;
-            const reasoning = preds.map(p => p.reasoning).join('; ');
+            const avgConfidence = preds.reduce((sum, p) => sum + (p.confidence || 0.5), 0) / preds.length;
+            const reasoning = preds.map(p => p.reasoning || '').filter(r => r).join('; ');
 
             return {
                 outcome,
                 probability: Math.max(0.1, Math.min(0.9, weightedProb)),
                 confidence: avgConfidence > 0.7 ? 'High' : avgConfidence > 0.5 ? 'Medium' : 'Low',
-                reasoning,
+                reasoning: reasoning || 'Based on causal analysis',
                 causalChains: preds.length
             };
-        });
+        }).filter(p => p !== null);
+
+        if (aggregated.length === 0) {
+            return this.generateFallbackPrediction({});
+        }
 
         // Sort by probability and return top 2
         return aggregated
-            .sort((a, b) => b.probability - a.probability)
+            .sort((a, b) => (b.probability || 0) - (a.probability || 0))
             .slice(0, 2)
             .map(pred => ({
                 outcome: pred.outcome,
