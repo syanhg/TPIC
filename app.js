@@ -201,12 +201,8 @@ function createMarketCard(event) {
     
     card.innerHTML = `
         <div class="relative h-48 w-full overflow-hidden rounded-t-xl bg-gradient-to-br from-gray-100 to-gray-50">
-            ${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(event.title)}" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.style.display='none'">` : ''}
+            ${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(event.title)}" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 grayscale" style="filter: grayscale(100%);" onerror="this.style.display='none'">` : ''}
             <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-            <!-- Liquid Glass Effect -->
-            <div class="glass-container">
-                <div class="glass-effect-backdrop"></div>
-            </div>
             <div class="absolute top-3 right-3 z-10">
                 <span class="inline-flex items-center gap-1.5 rounded-full ${isLive ? 'bg-green-500 text-white' : 'bg-gray-600 text-white'} px-2.5 py-1 text-[10px] font-medium shadow-sm">
                     <span class="h-1.5 w-1.5 rounded-full ${isLive ? 'bg-white animate-pulse' : 'bg-current'}"></span>
