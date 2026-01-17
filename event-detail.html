@@ -225,15 +225,15 @@
 
     <!-- Main Content - Aligned with header -->
     <div class="container mx-auto px-6 lg:px-8 py-8 max-w-7xl">
-        <!-- Back Navigation -->
+    <!-- Back Navigation -->
         <div class="mb-6">
             <a href="index.html" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
+            </svg>
                 Back
-            </a>
-        </div>
+        </a>
+    </div>
 
         <!-- Event Header - Minimal -->
         <div class="mb-8">
@@ -247,7 +247,7 @@
                 </button>
             </div>
             <div class="flex items-center gap-4 text-xs text-gray-500">
-                <span id="closeDate">Closes: Loading...</span>
+            <span id="closeDate">Closes: Loading...</span>
                 <span>•</span>
                 <span id="lastUpdate"></span>
             </div>
@@ -291,15 +291,15 @@
                 <div class="text-sm font-medium text-blue-600">Reviewing <span id="reviewingLabel">sources</span></div>
                 <div id="reviewingSources" class="space-y-1.5 pl-5"></div>
             </div>
-        </div>
+                    </div>
 
         <!-- Analysis Content - IDE Style -->
         <div class="mb-8">
             <div id="analysisContent" class="ide-container">
                 <div class="ide-header">
                     <div class="ide-tabs">
-                        <div class="ide-tab active">analysis.md</div>
-                        <div class="ide-tab">reasoning.log</div>
+                        <div class="ide-tab active" data-tab="analysis">reasoning.md</div>
+                        <div class="ide-tab" data-tab="summary">summary.md</div>
                     </div>
                     <div class="ide-actions">
                         <button class="ide-btn" title="Copy">
@@ -310,28 +310,34 @@
                     </div>
                 </div>
                 <div class="ide-content">
-                    <div class="ide-line-numbers"></div>
+                    <div class="ide-line-numbers" id="analysisLineNumbers">1</div>
                     <div class="ide-text">
-                        <pre class="ide-code"><code id="analysisCode">// Analyzing event with statistical models...</code></pre>
+                        <pre class="ide-code"><code id="analysisCode">// Analyzing event with step-by-step reasoning...</code></pre>
+                    </div>
+                </div>
+                <div class="ide-content hidden" id="summaryContent">
+                    <div class="ide-line-numbers" id="summaryLineNumbers"></div>
+                    <div class="ide-text">
+                        <pre class="ide-code"><code id="summaryCode"></code></pre>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Statistical Metrics - IDE Style -->
             <div id="statisticalMetrics" class="ide-container mt-4 hidden">
                 <div class="ide-header">
                     <div class="ide-tabs">
                         <div class="ide-tab active">metrics.json</div>
+                        </div>
                     </div>
-                </div>
                 <div class="ide-content">
                     <div class="ide-line-numbers"></div>
                     <div class="ide-text">
                         <pre class="ide-code"><code id="metricsCode"></code></pre>
                     </div>
+                    </div>
                 </div>
-            </div>
-            
+
             <!-- Key Insight - IDE Style -->
             <div id="insightContainer" class="ide-container mt-4 hidden">
                 <div class="ide-header">
