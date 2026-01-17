@@ -276,11 +276,11 @@ async function performAIAnalysis(event, isUpdate = false) {
         const allSources = await fetchMultipleSources(event);
         console.log(`Got ${allSources.length} total sources from multiple APIs`);
         
-        // Step 4: Show reviewing
-        showReviewingPhase(allSources);
+        // Step 4: Show reviewing (async for favicons)
+        await showReviewingPhase(allSources);
         
-        // Step 5: Display sources
-        displaySources(allSources);
+        // Step 5: Display sources (async for favicons)
+        await displaySources(allSources);
         
         // Step 6: AI Analysis with streaming and timeout
         console.log('Starting real-time AI analysis...');
@@ -321,37 +321,81 @@ async function performAIAnalysis(event, isUpdate = false) {
     }
 }
 
+// Cache for source favicons
+const faviconCache = new Map();
+
+// Fast favicon fetcher
+async function getFavicon(url) {
+    if (!url) return null;
+    
+    try {
+        const domain = new URL(url).hostname.replace('www.', '');
+        const cacheKey = domain;
+        
+        if (faviconCache.has(cacheKey)) {
+            return faviconCache.get(cacheKey);
+        }
+        
+        // Try multiple favicon sources in parallel
+        const faviconPromises = [
+            `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
+            `https://${domain}/favicon.ico`,
+            `https://${domain}/favicon.png`
+        ].map(faviconUrl => 
+            fetch(faviconUrl, { method: 'HEAD', mode: 'no-cors' })
+                .then(() => faviconUrl)
+                .catch(() => null)
+        );
+        
+        // Use first available favicon
+        const results = await Promise.allSettled(faviconPromises);
+        const favicon = results.find(r => r.status === 'fulfilled' && r.value)?.value || 
+                       `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+        
+        faviconCache.set(cacheKey, favicon);
+        return favicon;
+    } catch (error) {
+        const domain = url.includes('://') ? new URL(url).hostname.replace('www.', '') : url;
+        return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+    }
+}
+
 async function fetchMultipleSources(event) {
     const allSources = [];
     const searchQueries = generateSearchQueries(event);
     
-    // Fetch from multiple sources in parallel
+    // Optimized: Fetch from fastest sources first, limit results for speed
     const sourcePromises = [
-        searchWithExa(searchQueries.exa, 8).catch(e => { console.error('Exa error:', e); return []; }),
+        searchWithExa(searchQueries.exa, 5).catch(e => { console.error('Exa error:', e); return []; }),
         searchWithNewsAPI(event.title).catch(e => { console.error('NewsAPI error:', e); return []; }),
-        searchWithTavily(event.title).catch(e => { console.error('Tavily error:', e); return []; }),
-        searchWithSerper(event.title).catch(e => { console.error('Serper error:', e); return []; })
+        searchWithTavily(event.title).catch(e => { console.error('Tavily error:', e); return []; })
     ];
     
-    const results = await Promise.allSettled(sourcePromises);
+    // Use Promise.race to get first results quickly, then wait for all
+    const quickResults = await Promise.race([
+        Promise.allSettled(sourcePromises.slice(0, 2)), // Fast sources first
+        new Promise(resolve => setTimeout(() => resolve([]), 3000)) // Timeout after 3s
+    ]);
     
-    results.forEach((result, index) => {
+    const allResults = await Promise.allSettled(sourcePromises);
+    
+    allResults.forEach((result) => {
         if (result.status === 'fulfilled' && Array.isArray(result.value)) {
             allSources.push(...result.value);
         }
     });
     
-    // Remove duplicates and prioritize by relevance
+    // Fast deduplication
     const uniqueSources = deduplicateSources(allSources);
     
-    // Sort by relevance and recency
+    // Quick sort and limit
     return uniqueSources
         .sort((a, b) => {
             const aScore = (a.relevanceScore || 0.5) * (a.isRecent ? 1.2 : 1);
             const bScore = (b.relevanceScore || 0.5) * (b.isRecent ? 1.2 : 1);
             return bScore - aScore;
         })
-        .slice(0, 12); // Top 12 sources
+        .slice(0, 10); // Reduced to 10 for speed
 }
 
 function generateSearchQueries(event) {
@@ -421,40 +465,56 @@ function showSearchingPhase(event) {
     });
 }
 
-function showReviewingPhase(exaResults) {
+async function showReviewingPhase(exaResults) {
     const reviewingSection = document.getElementById('reviewingSection');
     reviewingSection.classList.remove('hidden');
     
     const reviewingSources = document.getElementById('reviewingSources');
     const topSources = exaResults.slice(0, 5);
     
-    topSources.forEach((source, i) => {
+    // Fetch favicons in parallel
+    const sourcesWithFavicons = await Promise.all(
+        topSources.map(async (source) => {
+            const favicon = await getFavicon(source.url);
+            return { ...source, favicon };
+        })
+    );
+    
+    sourcesWithFavicons.forEach((source, i) => {
         setTimeout(() => {
             const domain = source.url ? new URL(source.url).hostname.replace('www.', '') : 'unknown';
+            const title = source.title || domain;
             const domainName = domain.split('.')[0];
-            const title = source.title || domainName;
             
             const el = document.createElement('div');
-            el.className = 'flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors';
+            el.className = 'flex items-start gap-2.5 p-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors';
             el.style.fontFamily = "'Inter', sans-serif";
             
             el.innerHTML = `
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                ${source.favicon ? 
+                    `<img src="${source.favicon}" alt="${domain}" class="h-6 w-6 shrink-0 rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
+                    ''
+                }
+                <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 text-[10px] font-medium" ${source.favicon ? 'style="display:none;"' : ''}>
                     ${domainName.charAt(0).toUpperCase()}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="text-sm font-medium text-gray-900 mb-1 line-clamp-1">${escapeHtml(title)}</div>
-                    <div class="text-xs text-gray-500">${escapeHtml(domain)}</div>
+                    <div class="text-xs font-medium text-gray-900 mb-0.5 line-clamp-1">${escapeHtml(title)}</div>
+                    <div class="text-[10px] text-gray-500">${escapeHtml(domain)}</div>
                 </div>
             `;
             
             reviewingSources.appendChild(el);
-        }, i * 100);
+        }, i * 50); // Faster animation
     });
 }
 
-async function searchWithExa(query, numResults = 8) {
+async function searchWithExa(query, numResults = 5) {
     try {
+        // Add timeout for speed
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        
         const response = await fetch('https://api.exa.ai/search', {
             method: 'POST',
             headers: {
@@ -467,10 +527,13 @@ async function searchWithExa(query, numResults = 8) {
                 useAutoprompt: true,
                 type: 'neural',
                 contents: {
-                    text: { maxCharacters: 1000 }
+                    text: { maxCharacters: 500 } // Reduced for speed
                 }
-            })
+            }),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) throw new Error('Exa API failed');
         const data = await response.json();
@@ -483,7 +546,11 @@ async function searchWithExa(query, numResults = 8) {
         }));
         
     } catch (error) {
-        console.error('Exa search error:', error);
+        if (error.name === 'AbortError') {
+            console.warn('Exa search timeout');
+        } else {
+            console.error('Exa search error:', error);
+        }
         return [];
     }
 }
@@ -500,7 +567,10 @@ async function searchWithNewsAPI(query) {
 
 async function searchWithGoogleNews(query) {
     try {
-        // Using Google News RSS (free, no API key needed)
+        // Using Google News RSS with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+        
         const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
         const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
         
@@ -508,8 +578,11 @@ async function searchWithGoogleNews(query) {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
-            }
+            },
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) throw new Error('Google News RSS failed');
         
@@ -518,7 +591,7 @@ async function searchWithGoogleNews(query) {
             throw new Error('Invalid RSS response');
         }
         
-        return data.items.slice(0, 6).map(item => ({
+        return data.items.slice(0, 4).map(item => ({ // Reduced for speed
             title: item.title || '',
             url: item.link || '',
             text: item.description || item.content || '',
@@ -528,9 +601,12 @@ async function searchWithGoogleNews(query) {
         }));
         
     } catch (error) {
-        console.error('Google News error:', error);
-        // Try alternative: Bing News (no API key needed for basic search)
-        return searchWithBingNews(query);
+        if (error.name === 'AbortError') {
+            console.warn('Google News timeout');
+        } else {
+            console.error('Google News error:', error);
+        }
+        return [];
     }
 }
 
@@ -547,14 +623,15 @@ async function searchWithBingNews(query) {
 
 async function searchWithTavily(query) {
     try {
-        // Tavily Search API - real-time web search
-        // Note: Requires API key, but we'll try and fallback gracefully
-        const apiKey = 'YOUR_TAVILY_KEY'; // Can be set via environment or config
+        // Tavily Search API - real-time web search with timeout
+        const apiKey = 'YOUR_TAVILY_KEY';
         
         if (!apiKey || apiKey === 'YOUR_TAVILY_KEY') {
-            // Fallback to DuckDuckGo or other free search
             return searchWithDuckDuckGo(query);
         }
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
         
         const response = await fetch('https://api.tavily.com/search', {
             method: 'POST',
@@ -564,11 +641,14 @@ async function searchWithTavily(query) {
             },
             body: JSON.stringify({
                 query: query,
-                search_depth: 'advanced',
-                max_results: 5,
-                include_answer: true
-            })
+                search_depth: 'basic', // Changed to basic for speed
+                max_results: 3, // Reduced for speed
+                include_answer: false
+            }),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) throw new Error('Tavily API failed');
         const data = await response.json();
@@ -646,14 +726,15 @@ async function searchWithDuckDuckGo(query) {
 
 async function searchWithSerper(query) {
     try {
-        // Serper.dev - Google Search API
-        // Note: Requires API key, but we'll try and fallback gracefully
-        const apiKey = 'YOUR_SERPER_KEY'; // Can be set via environment or config
+        // Serper.dev - Google Search API with timeout
+        const apiKey = 'YOUR_SERPER_KEY';
         
         if (!apiKey || apiKey === 'YOUR_SERPER_KEY') {
-            // Fallback to alternative search
             return searchWithDuckDuckGo(query);
         }
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
         
         const response = await fetch('https://google.serper.dev/search', {
             method: 'POST',
@@ -663,11 +744,14 @@ async function searchWithSerper(query) {
             },
             body: JSON.stringify({
                 q: query,
-                num: 5,
+                num: 3, // Reduced for speed
                 gl: 'us',
                 hl: 'en'
-            })
+            }),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) throw new Error('Serper API failed');
         const data = await response.json();
@@ -1025,6 +1109,9 @@ function formatAnalysisText(text) {
     }).join('');
 }
 
+let predictionChart = null;
+let confidenceChart = null;
+
 function displayPredictions(predictions) {
     const container = document.getElementById('predictionRows');
     container.innerHTML = predictions.map(pred => `
@@ -1034,6 +1121,91 @@ function displayPredictions(predictions) {
             ${pred.ci_lower && pred.ci_upper ? `<span class="text-[10px] text-gray-500">[${(pred.ci_lower * 100).toFixed(0)}-${(pred.ci_upper * 100).toFixed(0)}%]</span>` : ''}
         </div>
     `).join('');
+    
+    // Create prediction distribution chart
+    if (typeof Chart !== 'undefined' && predictions.length > 0) {
+        const vizContainer = document.getElementById('visualizationsContainer');
+        if (vizContainer) {
+            vizContainer.classList.remove('hidden');
+            
+            const predCtx = document.getElementById('predictionChart');
+            const confCtx = document.getElementById('confidenceChart');
+            
+            if (predCtx) {
+                if (predictionChart) predictionChart.destroy();
+                predictionChart = new Chart(predCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: predictions.map(p => p.outcome),
+                        datasets: [{
+                            data: predictions.map(p => p.probability * 100),
+                            backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'].slice(0, predictions.length),
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.label}: ${context.parsed.toFixed(1)}%`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Confidence Interval Chart
+            if (confCtx && predictions.some(p => p.ci_lower && p.ci_upper)) {
+                if (confidenceChart) confidenceChart.destroy();
+                
+                const hasCI = predictions.filter(p => p.ci_lower && p.ci_upper);
+                if (hasCI.length > 0) {
+                    confidenceChart = new Chart(confCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: predictions.map(p => p.outcome),
+                            datasets: [{
+                                label: 'Probability',
+                                data: predictions.map(p => p.probability * 100),
+                                backgroundColor: predictions.map((p, i) => ['#3b82f6', '#ef4444', '#10b981'][i % 3]),
+                                borderColor: predictions.map((p, i) => ['#2563eb', '#dc2626', '#059669'][i % 3]),
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => {
+                                            const pred = predictions[context.dataIndex];
+                                            if (pred.ci_lower && pred.ci_upper) {
+                                                return `${pred.outcome}: ${(pred.probability * 100).toFixed(1)}% [${(pred.ci_lower * 100).toFixed(1)}-${(pred.ci_upper * 100).toFixed(1)}%]`;
+                                            }
+                                            return `${pred.outcome}: ${(pred.probability * 100).toFixed(1)}%`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: { callback: (value) => value + '%' }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }
 }
 
 function displayModelInsight(insight) {
@@ -1083,27 +1255,38 @@ function displayStatisticalMetrics(metrics) {
     ).join('');
 }
 
-function displaySources(allSources) {
+async function displaySources(allSources) {
     const container = document.getElementById('sourcesList');
-    const sources = allSources.slice(0, 12);
+    const sources = allSources.slice(0, 10);
     
     document.getElementById('totalSources').textContent = sources.length;
     
-    container.innerHTML = sources.map((source, i) => {
+    // Fetch favicons in parallel for speed
+    const sourcesWithFavicons = await Promise.all(
+        sources.map(async (source) => {
+            const favicon = await getFavicon(source.url);
+            return { ...source, favicon };
+        })
+    );
+    
+    container.innerHTML = sourcesWithFavicons.map((source, i) => {
         const domain = source.url ? (new URL(source.url).hostname.replace('www.', '') || 'Unknown') : 'AI Source';
         const domainName = domain.split('.')[0];
-        const isRecent = source.isRecent ? '🆕' : '';
         
         return `
-        <a href="${source.url || '#'}" target="_blank" rel="noopener" class="group flex items-start gap-3 rounded-md border border-border/50 bg-card p-3 transition-colors hover:border-border hover:bg-muted/30">
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary text-xs font-medium">
+        <a href="${source.url || '#'}" target="_blank" rel="noopener" class="group flex items-start gap-2.5 rounded-md border border-gray-200 bg-white p-2.5 transition-colors hover:bg-gray-50">
+            ${source.favicon ? 
+                `<img src="${source.favicon}" alt="${domain}" class="h-5 w-5 shrink-0 rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
+                ''
+            }
+            <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-600 text-[10px] font-medium" ${source.favicon ? 'style="display:none;"' : ''}>
                 ${domainName.charAt(0).toUpperCase()}
             </div>
             <div class="min-w-0 flex-1">
-                <div class="mb-1 line-clamp-2 text-xs font-medium group-hover:text-primary transition-colors">
-                    ${escapeHtml(source.title)} ${isRecent}
-            </div>
-                <div class="text-[10px] text-muted-foreground">${escapeHtml(domain)}</div>
+                <div class="mb-0.5 line-clamp-1 text-xs font-medium text-gray-900 group-hover:text-gray-700">
+                    ${escapeHtml(source.title)}
+                </div>
+                <div class="text-[10px] text-gray-500">${escapeHtml(domain)}</div>
             </div>
         </a>
         `;
