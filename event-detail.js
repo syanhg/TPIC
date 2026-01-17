@@ -163,6 +163,12 @@ async function performAIAnalysis(event, isUpdate = false) {
         const knowledgeGraph = await buildKnowledgeGraph(event, allSources);
         displayKnowledgeGraph(knowledgeGraph);
         
+        // Step 5.6: Use causal predictions if available
+        if (knowledgeGraph && knowledgeGraph.metadata && knowledgeGraph.metadata.predictions) {
+            console.log('Using causality-based predictions:', knowledgeGraph.metadata.predictions);
+            displayPredictions(knowledgeGraph.metadata.predictions);
+        }
+        
         // Step 6: AI Analysis with streaming and timeout
         console.log('Starting real-time AI analysis...');
         const analysisPromise = runAIAnalysis(event, allSources, knowledgeGraph);
@@ -245,6 +251,9 @@ async function getFavicon(url) {
 const AIRWEAVE_API_KEY = 'e-Dd6QDCHVRQkssDWDu7IN4Xt4CcMXIPJgLQWr4sjZw';
 const AIRWEAVE_BASE_URL = 'https://api.airweave.ai';
 
+// Initialize Causality Engine
+const causalityEngine = new CausalityEngine();
+
 async function searchWithAirweave(query, event) {
     try {
         const controller = new AbortController();
@@ -292,33 +301,64 @@ async function searchWithAirweave(query, event) {
 
 async function buildKnowledgeGraph(event, allSources) {
     try {
-        // Use Airweave to analyze causality and build knowledge graph
+        console.log('Building knowledge graph with causality engine...');
+        
+        // Use Airweave to get additional context
         const causalityQuery = `Analyze causal relationships for: ${event.title}. Identify cause-effect chains, dependencies, and predictive factors.`;
         
-        const response = await fetch(`${AIRWEAVE_BASE_URL}/v1/collections/search`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${AIRWEAVE_API_KEY}`
-            },
-            body: JSON.stringify({
-                query: causalityQuery,
-                collection_id: 'default',
-                expand_query: true,
-                retrieval_strategy: 'hybrid',
-                generate_answer: true,
-                limit: 15
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error('Airweave causality analysis failed');
+        let airweaveData = null;
+        try {
+            const response = await fetch(`${AIRWEAVE_BASE_URL}/v1/collections/search`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${AIRWEAVE_API_KEY}`
+                },
+                body: JSON.stringify({
+                    query: causalityQuery,
+                    collection_id: 'default',
+                    expand_query: true,
+                    retrieval_strategy: 'hybrid',
+                    generate_answer: true,
+                    limit: 15
+                })
+            });
+            
+            if (response.ok) {
+                airweaveData = await response.json();
+                // Add Airweave results to sources
+                if (airweaveData.results || airweaveData.documents) {
+                    const airweaveSources = (airweaveData.results || airweaveData.documents).map(r => ({
+                        title: r.title || r.metadata?.title || '',
+                        url: r.url || r.metadata?.url || '',
+                        text: r.content || r.text || r.snippet || '',
+                        relevanceScore: r.score || r.relevance_score || 0.85,
+                        source: 'Airweave',
+                        metadata: r.metadata || {}
+                    }));
+                    allSources = [...allSources, ...airweaveSources];
+                }
+            }
+        } catch (error) {
+            console.warn('Airweave API error, continuing with other sources:', error);
         }
         
-        const data = await response.json();
+        // Use Causality Engine to build graph
+        const graph = causalityEngine.buildCausalGraph(allSources, event);
         
-        // Extract entities and relationships from sources
-        const graph = extractCausalGraph(allSources, data, event);
+        // Generate predictions from causal graph
+        const causalPredictions = causalityEngine.predictFromCausality(event, graph);
+        
+        // Store predictions in graph metadata
+        graph.metadata.predictions = causalPredictions;
+        
+        console.log('Knowledge graph built:', {
+            nodes: graph.nodes.length,
+            edges: graph.edges.length,
+            chains: graph.metadata.causalChains.length,
+            predictions: causalPredictions.length
+        });
+        
         return graph;
     } catch (error) {
         console.error('Knowledge graph error:', error);
@@ -327,96 +367,9 @@ async function buildKnowledgeGraph(event, allSources) {
     }
 }
 
+// Legacy function - now uses CausalityEngine
 function extractCausalGraph(sources, airweaveData, event) {
-    const nodes = new Map();
-    const edges = [];
-    
-    // Add event as central node
-    nodes.set(event.id || 'event', {
-        id: event.id || 'event',
-        label: event.title,
-        type: 'event',
-        size: 30,
-        color: '#4ec9b0'
-    });
-    
-    // Extract entities and causal relationships from sources
-    sources.forEach((source, idx) => {
-        const sourceId = `source_${idx}`;
-        nodes.set(sourceId, {
-            id: sourceId,
-            label: source.title.substring(0, 40),
-            type: 'source',
-            size: 15,
-            color: '#569cd6',
-            url: source.url,
-            relevance: source.relevanceScore
-        });
-        
-        // Connect source to event
-        edges.push({
-            source: sourceId,
-            target: event.id || 'event',
-            type: 'informs',
-            strength: source.relevanceScore || 0.5,
-            label: 'informs'
-        });
-        
-        // Extract causal phrases from source text
-        const causalPhrases = extractCausalPhrases(source.text || '');
-        causalPhrases.forEach((phrase, pIdx) => {
-            const causeId = `cause_${idx}_${pIdx}`;
-            const effectId = `effect_${idx}_${pIdx}`;
-            
-            if (phrase.cause && phrase.effect) {
-                if (!nodes.has(causeId)) {
-                    nodes.set(causeId, {
-                        id: causeId,
-                        label: phrase.cause.substring(0, 30),
-                        type: 'factor',
-                        size: 12,
-                        color: '#ce9178'
-                    });
-                }
-                
-                if (!nodes.has(effectId)) {
-                    nodes.set(effectId, {
-                        id: effectId,
-                        label: phrase.effect.substring(0, 30),
-                        type: 'outcome',
-                        size: 12,
-                        color: '#b5cea8'
-                    });
-                }
-                
-                edges.push({
-                    source: causeId,
-                    target: effectId,
-                    type: 'causes',
-                    strength: 0.7,
-                    label: 'causes'
-                });
-                
-                // Connect to event
-                edges.push({
-                    source: causeId,
-                    target: event.id || 'event',
-                    type: 'influences',
-                    strength: 0.6,
-                    label: 'influences'
-                });
-            }
-        });
-    });
-    
-    return {
-        nodes: Array.from(nodes.values()),
-        edges: edges,
-        metadata: {
-            totalSources: sources.length,
-            totalRelations: edges.length
-        }
-    };
+    return causalityEngine.buildCausalGraph(sources, event);
 }
 
 function extractCausalPhrases(text) {
@@ -456,8 +409,9 @@ function resetGraphLayout() {
 }
 
 function buildLocalCausalGraph(sources, event) {
-    // Fallback: build graph locally from sources
-    return extractCausalGraph(sources, null, event);
+    // Fallback: build graph locally from sources using CausalityEngine
+    console.log('Building local causal graph from sources...');
+    return causalityEngine.buildCausalGraph(sources, event);
 }
 
 async function fetchMultipleSources(event) {
