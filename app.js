@@ -206,10 +206,6 @@ function createMarketCard(event) {
             <!-- Liquid Glass Effect -->
             <div class="glass-container">
                 <div class="glass-effect-backdrop"></div>
-                <div class="glass-effect top"></div>
-                <div class="glass-effect bottom"></div>
-                <div class="glass-effect left"></div>
-                <div class="glass-effect right"></div>
             </div>
             <div class="absolute top-3 right-3 z-10">
                 <span class="inline-flex items-center gap-1.5 rounded-full ${isLive ? 'bg-green-500 text-white' : 'bg-gray-600 text-white'} px-2.5 py-1 text-[10px] font-medium shadow-sm">
