@@ -1050,11 +1050,11 @@ STEP 5: REASONING SYNTHESIS
    - Identify key risk factors and edge cases
    - Provide clear, traceable reasoning chain
 
-TASK - PROVIDE STRUCTURED ANALYSIS WITH STEP-BY-STEP REASONING:
+TASK - YOU MUST PROVIDE STEP-BY-STEP REASONING FIRST:
 
-## STEP-BY-STEP REASONING PROCESS
+## MANDATORY: STEP-BY-STEP REASONING PROCESS
 
-You MUST format your reasoning EXACTLY like this code block. Show your thinking process step-by-step:
+YOU MUST START YOUR RESPONSE WITH THIS EXACT FORMAT. DO NOT SKIP THIS SECTION.
 
 \`\`\`
 // ===== STEP-BY-STEP REASONING PROCESS =====
@@ -1104,6 +1104,8 @@ You MUST format your reasoning EXACTLY like this code block. Show your thinking 
 // Reasoning chain: [clear logical path from evidence to conclusion]
 // Final prediction: [Yes/No with probability and confidence interval]
 \`\`\`
+
+IMPORTANT: Your response MUST begin with the step-by-step reasoning code block above. Fill in each step with actual analysis based on the ${allSources.length} sources provided.
 
 ## ANALYSIS SUMMARY
 
@@ -1274,21 +1276,49 @@ function formatAnalysisText(text, analysis, allSources = null) {
         display = analysis.rawText.replace(/```json[\s\S]*?```/g, '').trim();
     }
     
-    // Extract structured sections - prioritize step-by-step reasoning
-    // Look for step-by-step reasoning in multiple formats
-    let stepByStepReasoning = extractSection(display, /STEP-BY-STEP REASONING|REASONING PROCESS|Reasoning Process|### STEP-BY-STEP REASONING|## REASONING PROCESS/i);
+    // Debug: log what we're working with
+    console.log('Formatting analysis text, length:', display.length);
+    console.log('First 500 chars:', display.substring(0, 500));
     
-    // Also try to extract from code blocks
+    // Extract structured sections - prioritize step-by-step reasoning
+    // Look for step-by-step reasoning in multiple formats - BE AGGRESSIVE
+    let stepByStepReasoning = null;
+    
+    // Try code block first (most common format)
     const codeBlockMatch = display.match(/```[\s\S]*?STEP-BY-STEP[\s\S]*?```/i);
-    if (codeBlockMatch && !stepByStepReasoning) {
+    if (codeBlockMatch) {
         stepByStepReasoning = codeBlockMatch[0].replace(/```/g, '').trim();
     }
     
-    // Extract individual steps if full section not found
+    // Try section headers
     if (!stepByStepReasoning) {
-        const stepMatches = display.match(/(Step \d+:|Step \d+)[\s\S]*?(?=Step \d+:|##|###|$)/gi);
-        if (stepMatches && stepMatches.length > 0) {
-            stepByStepReasoning = stepMatches.join('\n\n');
+        stepByStepReasoning = extractSection(display, /STEP-BY-STEP REASONING|REASONING PROCESS|Reasoning Process|### STEP-BY-STEP REASONING|## REASONING PROCESS|## STEP-BY-STEP/i);
+    }
+    
+    // Extract individual steps if full section not found - look for ANY step pattern
+    if (!stepByStepReasoning) {
+        // Try multiple step patterns
+        const stepPatterns = [
+            /Step \d+:[^\n]*[\s\S]*?(?=Step \d+:|##|###|$)/gi,
+            /Step \d+[^\n]*[\s\S]*?(?=Step \d+|##|###|$)/gi,
+            /\*\*Step \d+[^\n]*\*\*[\s\S]*?(?=\*\*Step \d+|##|###|$)/gi,
+            /### Step \d+[^\n]*[\s\S]*?(?=### Step \d+|##|###|$)/gi
+        ];
+        
+        for (const pattern of stepPatterns) {
+            const steps = display.match(pattern);
+            if (steps && steps.length >= 3) { // Need at least 3 steps
+                stepByStepReasoning = steps.join('\n\n');
+                break;
+            }
+        }
+    }
+    
+    // If still nothing, extract everything before "ANALYSIS SUMMARY" or "PREDICTIONS"
+    if (!stepByStepReasoning) {
+        const beforeSummary = display.split(/## ANALYSIS|ANALYSIS SUMMARY|PREDICTIONS/i)[0];
+        if (beforeSummary && beforeSummary.trim().length > 200) {
+            stepByStepReasoning = beforeSummary.trim();
         }
     }
     
@@ -1323,24 +1353,35 @@ function formatAnalysisText(text, analysis, allSources = null) {
     }
     
     // Build IDE-style formatted text with step-by-step reasoning (ALWAYS show it)
-    if (sections.stepByStep) {
-        formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
-        formatted += formatIDE(sections.stepByStep) + '\n\n';
-        formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
-    } else {
-        // If no step-by-step found, try to extract from the full text
-        const stepPattern = /(Step \d+[:\-]|Step \d+)[\s\S]*?(?=Step \d+|##|###|$)/gi;
-        const steps = display.match(stepPattern);
-        if (steps && steps.length > 0) {
-            formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
-            formatted += formatIDE(steps.join('\n\n')) + '\n\n';
-            formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
+    // ALWAYS show reasoning - use whatever we found or generate from full text
+    formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
+    
+    let reasoningToShow = null;
+    
+    if (sections.stepByStep && sections.stepByStep.length > 50) {
+        reasoningToShow = sections.stepByStep;
+        console.log('Using extracted stepByStep section, length:', reasoningToShow.length);
+    } else if (display && display.length > 100) {
+        // Use the first part of the display as reasoning if no structured section found
+        // Take everything before "ANALYSIS SUMMARY" or similar sections
+        const reasoningText = display.split(/## ANALYSIS|ANALYSIS SUMMARY|PREDICTIONS|```json/i)[0];
+        if (reasoningText && reasoningText.trim().length > 100) {
+            reasoningToShow = reasoningText.trim();
+            console.log('Using split reasoning text, length:', reasoningToShow.length);
         } else {
-            // If still no steps found, show the full text as reasoning
-            formatted += `<span class="section">// ===== REASONING PROCESS =====</span>\n\n`;
-            formatted += formatIDE(display.substring(0, 3000)) + '\n\n';
+            // Show first 3000 chars of display as reasoning
+            reasoningToShow = display.substring(0, 3000);
+            console.log('Using first 3000 chars as reasoning');
         }
     }
+    
+    if (reasoningToShow) {
+        formatted += formatIDE(reasoningToShow) + '\n\n';
+    } else {
+        formatted += `<span class="comment">// Waiting for reasoning process...</span>\n\n`;
+    }
+    
+    formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
     
     // Also populate summary tab with analysis summary
     const summaryCode = document.getElementById('summaryCode');
