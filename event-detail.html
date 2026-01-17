@@ -41,8 +41,6 @@
         }
     </script>
     <script src="https://js.puter.com/v2/"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="causality-engine.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -118,49 +116,44 @@
             </div>
         </div>
 
-        <!-- Main Prediction - Clean Design -->
+        <!-- Main Prediction - Black & White shadcn Style -->
         <div class="mb-8">
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm overflow-hidden">
-                <div class="px-8 py-6">
-                    <div class="flex items-center gap-2 mb-4">
-                        <div class="h-2 w-2 rounded-full bg-blue-600 animate-pulse"></div>
-                        <h2 class="text-lg font-semibold text-gray-900">Prediction</h2>
-                    </div>
-                    <div id="mainPrediction" class="space-y-4">
-                        <div class="text-center py-12">
-                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                            <p class="mt-4 text-sm text-gray-600">Analyzing event and generating prediction...</p>
-                        </div>
+            <div class="rounded-lg border border-gray-200 bg-white">
+                <div class="px-6 py-5 border-b border-gray-200">
+                    <h2 class="text-base font-semibold text-gray-900">Prediction</h2>
+                </div>
+                <div id="mainPrediction" class="px-6 py-8">
+                    <div class="text-center py-12">
+                        <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
+                        <p class="mt-4 text-sm text-gray-500">Analyzing event and generating prediction...</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Analysis & Reasoning - Clean Text -->
+        <!-- Analysis & Reasoning - Black & White shadcn Style -->
         <div class="mb-8">
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div class="px-8 py-6 border-b border-gray-100">
-                    <h2 class="text-lg font-semibold text-gray-900">Analysis & Reasoning</h2>
-                    <p class="text-sm text-gray-500 mt-1">Causality-based statistical analysis from 30+ sources</p>
+            <div class="rounded-lg border border-gray-200 bg-white">
+                <div class="px-6 py-5 border-b border-gray-200">
+                    <h2 class="text-base font-semibold text-gray-900">Analysis & Reasoning</h2>
+                    <p class="text-xs text-gray-500 mt-1">Statistical analysis from multiple sources</p>
                 </div>
-                <div id="reasoningContainer" class="px-8 py-6">
-                    <div class="prose prose-sm max-w-none">
-                        <div id="reasoningContent" class="text-gray-700 leading-relaxed">
-                            <p class="text-gray-500 italic">Gathering sources and analyzing causal relationships...</p>
-                        </div>
+                <div id="reasoningContainer" class="px-6 py-6">
+                    <div id="reasoningContent" class="text-sm text-gray-700 leading-relaxed">
+                        <p class="text-gray-500 italic">Gathering sources and analyzing...</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Sources -->
+        <!-- Sources - Black & White shadcn Style -->
         <div class="mb-8">
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="rounded-lg border border-gray-200 bg-white">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-gray-900">Sources</h3>
                     <span class="text-xs text-gray-500" id="totalSources">0</span>
                 </div>
-                <div id="sourcesList" class="p-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
+                <div id="sourcesList" class="p-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"></div>
             </div>
         </div>
     </div>
