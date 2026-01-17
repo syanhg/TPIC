@@ -1078,62 +1078,58 @@ STEP 5: REASONING SYNTHESIS
 
 TASK - PROVIDE STRUCTURED ANALYSIS WITH STEP-BY-STEP REASONING:
 
-## REASONING PROCESS (Show your thinking step-by-step like Claude/Gemini)
+## STEP-BY-STEP REASONING PROCESS
 
-You MUST show your reasoning process in clear, numbered steps. Each step should show:
-1. What you're thinking about
-2. What evidence you're considering
-3. How you're processing that evidence
-4. What conclusion you're drawing from that step
+You MUST format your reasoning EXACTLY like this code block. Show your thinking process step-by-step:
 
-Format your reasoning like this:
+\`\`\`
+// ===== STEP-BY-STEP REASONING PROCESS =====
 
-### STEP-BY-STEP REASONING:
+// Step 1: Initial Evidence Gathering
+// Examining Source 1, 2, 3... [list sources you're reviewing]
+// Key findings: [what you discover from these sources]
+// Initial assessment: [what this suggests]
 
-**Step 1: Initial Evidence Gathering**
-- Examining Source 1, 2, 3... [list sources you're reviewing]
-- Key findings: [what you discover from these sources]
-- Initial assessment: [what this suggests]
+// Step 2: Pattern Recognition  
+// Comparing findings across sources [cite specific sources]
+// Consensus identified: [describe consensus]
+// Outliers noted: [describe conflicting evidence]
+// Pattern conclusion: [what pattern emerges]
 
-**Step 2: Pattern Recognition**
-- Comparing findings across sources [cite specific sources]
-- Consensus identified: [describe consensus]
-- Outliers noted: [describe conflicting evidence]
-- Pattern conclusion: [what pattern emerges]
+// Step 3: Statistical Analysis
+// Applying Bayesian inference:
+//   Prior probability: [value]
+//   Evidence from sources: [describe]
+//   Posterior calculation: [show math]
+// Calculating confidence intervals: [show process]
+// Running significance tests: [show results]
+// Statistical conclusion: [what the numbers tell us]
 
-**Step 3: Statistical Analysis**
-- Applying Bayesian inference: [show your calculation process]
-  - Prior probability: [value]
-  - Evidence from sources: [describe]
-  - Posterior calculation: [show math]
-- Calculating confidence intervals: [show process]
-- Running significance tests: [show results]
-- Statistical conclusion: [what the numbers tell us]
+// Step 4: Evidence Weighting
+// High credibility sources (Sources X, Y, Z): [what they say]
+// Recent sources (Sources A, B, C): [what they indicate]
+// Weighted synthesis: [how you combine them]
+// Weighted conclusion: [what emerges]
 
-**Step 4: Evidence Weighting**
-- High credibility sources (Sources X, Y, Z): [what they say]
-- Recent sources (Sources A, B, C): [what they indicate]
-- Weighted synthesis: [how you combine them]
-- Weighted conclusion: [what emerges]
+// Step 5: Multi-Source Integration
+// News perspective: [summary from news sources]
+// Market signals: [summary from market sources]
+// Expert opinions: [summary from expert sources]
+// Social sentiment: [summary from social sources]
+// Integration result: [how these combine]
 
-**Step 5: Multi-Source Integration**
-- News perspective: [summary from news sources]
-- Market signals: [summary from market sources]
-- Expert opinions: [summary from expert sources]
-- Social sentiment: [summary from social sources]
-- Integration result: [how these combine]
+// Step 6: Uncertainty Assessment
+// Confidence level: [High/Medium/Low]
+// Uncertainty factors: [what creates uncertainty]
+// Risk factors: [what could change the prediction]
+// Final confidence: [justified assessment]
 
-**Step 6: Uncertainty Assessment**
-- Confidence level: [High/Medium/Low]
-- Uncertainty factors: [what creates uncertainty]
-- Risk factors: [what could change the prediction]
-- Final confidence: [justified assessment]
-
-**Step 7: Final Prediction Synthesis**
-- Combining all evidence: [summary of all steps]
-- Probability calculation: [final calculation]
-- Reasoning chain: [clear logical path from evidence to conclusion]
-- Final prediction: [Yes/No with probability and confidence interval]
+// Step 7: Final Prediction Synthesis
+// Combining all evidence: [summary of all steps]
+// Probability calculation: [final calculation]
+// Reasoning chain: [clear logical path from evidence to conclusion]
+// Final prediction: [Yes/No with probability and confidence interval]
+\`\`\`
 
 ## ANALYSIS SUMMARY
 
@@ -1297,7 +1293,23 @@ function formatAnalysisText(text, analysis) {
     }
     
     // Extract structured sections - prioritize step-by-step reasoning
-    const stepByStepReasoning = extractSection(display, /STEP-BY-STEP REASONING|REASONING PROCESS|Reasoning Process|### STEP-BY-STEP REASONING|## REASONING PROCESS/i);
+    // Look for step-by-step reasoning in multiple formats
+    let stepByStepReasoning = extractSection(display, /STEP-BY-STEP REASONING|REASONING PROCESS|Reasoning Process|### STEP-BY-STEP REASONING|## REASONING PROCESS/i);
+    
+    // Also try to extract from code blocks
+    const codeBlockMatch = display.match(/```[\s\S]*?STEP-BY-STEP[\s\S]*?```/i);
+    if (codeBlockMatch && !stepByStepReasoning) {
+        stepByStepReasoning = codeBlockMatch[0].replace(/```/g, '').trim();
+    }
+    
+    // Extract individual steps if full section not found
+    if (!stepByStepReasoning) {
+        const stepMatches = display.match(/(Step \d+:|Step \d+)[\s\S]*?(?=Step \d+:|##|###|$)/gi);
+        if (stepMatches && stepMatches.length > 0) {
+            stepByStepReasoning = stepMatches.join('\n\n');
+        }
+    }
+    
     const sections = {
         stepByStep: stepByStepReasoning,
         evidence: extractSection(display, /## ANALYSIS|### 1\. Evidence Synthesis|Evidence Synthesis|ANALYSIS SUMMARY/i),
@@ -1310,24 +1322,33 @@ function formatAnalysisText(text, analysis) {
     // Format as IDE-style code
     let formatted = '';
     
-    // Build IDE-style formatted text with step-by-step reasoning first
+    // Build IDE-style formatted text with step-by-step reasoning first (ALWAYS show it)
     if (sections.stepByStep) {
         formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
         formatted += formatIDE(sections.stepByStep) + '\n\n';
         formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
-        
-        // Also populate summary tab with analysis summary
-        const summaryCode = document.getElementById('summaryCode');
-        if (summaryCode) {
-            const summaryText = sections.evidence || display.substring(0, 1000);
-            const summaryFormatted = formatIDE(summaryText);
-            summaryCode.innerHTML = summaryFormatted;
-            const summaryLineCount = (summaryFormatted.match(/\n/g) || []).length + 1;
-            const summaryLineNumbers = Array.from({ length: summaryLineCount }, (_, i) => i + 1).join('\n');
-            const summaryLineNumbersEl = document.getElementById('summaryLineNumbers');
-            if (summaryLineNumbersEl) {
-                summaryLineNumbersEl.textContent = summaryLineNumbers;
-            }
+    } else {
+        // If no step-by-step found, try to extract from the full text
+        const stepPattern = /(Step \d+[:\-]|Step \d+)[\s\S]*?(?=Step \d+|##|###|$)/gi;
+        const steps = display.match(stepPattern);
+        if (steps && steps.length > 0) {
+            formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
+            formatted += formatIDE(steps.join('\n\n')) + '\n\n';
+            formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
+        }
+    }
+    
+    // Also populate summary tab with analysis summary
+    const summaryCode = document.getElementById('summaryCode');
+    if (summaryCode) {
+        const summaryText = sections.evidence || sections.statistical || display.substring(0, 1500);
+        const summaryFormatted = formatIDE(summaryText);
+        summaryCode.innerHTML = summaryFormatted;
+        const summaryLineCount = (summaryFormatted.match(/\n/g) || []).length + 1;
+        const summaryLineNumbers = Array.from({ length: summaryLineCount }, (_, i) => i + 1).join('\n');
+        const summaryLineNumbersEl = document.getElementById('summaryLineNumbers');
+        if (summaryLineNumbersEl) {
+            summaryLineNumbersEl.textContent = summaryLineNumbers;
         }
     }
     
@@ -1396,39 +1417,46 @@ function formatAnalysisText(text, analysis) {
 function formatIDE(text) {
     if (!text) return '';
     
-    // Escape HTML
+    // Escape HTML first
     text = escapeHtml(text);
     
-    // Format step-by-step reasoning headers (like Claude/Gemini)
-    text = text.replace(/\*\*Step (\d+):\s*([^*]+)\*\*/gi, '<span class="function">Step $1: $2</span>');
-    text = text.replace(/Step (\d+):\s*([^\n]+)/gi, '<span class="function">Step $1: $2</span>');
+    // Format step-by-step reasoning headers (Cursor-style)
+    text = text.replace(/Step (\d+):\s*([^\n]+)/gi, '<span class="function">// Step $1: $2</span>');
+    text = text.replace(/Step (\d+)\s*([^\n]+)/gi, '<span class="function">// Step $1: $2</span>');
     
-    // Format reasoning sub-steps
-    text = text.replace(/^(\s*)- ([^\n]+)/gm, '<span class="comment">  →</span> $2');
-    text = text.replace(/^(\s*)• ([^\n]+)/gm, '<span class="comment">  →</span> $2');
+    // Format markdown bold step headers
+    text = text.replace(/\*\*Step (\d+):\s*([^*]+)\*\*/gi, '<span class="function">// Step $1: $2</span>');
     
-    // Format source citations
+    // Format reasoning sub-steps (Cursor-style indentation)
+    text = text.replace(/^(\s*)- ([^\n]+)/gm, '<span class="comment">  // $2</span>');
+    text = text.replace(/^(\s*)• ([^\n]+)/gm, '<span class="comment">  // $2</span>');
+    
+    // Format source citations (Cursor-style)
     text = text.replace(/Source (\d+)/gi, '<span class="source">Source $1</span>');
     text = text.replace(/Sources ([\d,\s]+)/gi, '<span class="source">Sources $1</span>');
     
     // Format numbers and percentages
     text = text.replace(/(\d+\.\d+%)/g, '<span class="number">$1</span>');
     text = text.replace(/(\d+\.\d+)/g, '<span class="number">$1</span>');
+    text = text.replace(/(\d+%)/g, '<span class="number">$1</span>');
     
-    // Format statistical terms
-    text = text.replace(/(χ²|Chi-square|Bayesian|Monte Carlo|confidence interval|CI|posterior|prior|likelihood|probability|significance)/gi, '<span class="keyword">$1</span>');
+    // Format statistical terms (Cursor blue)
+    text = text.replace(/(χ²|Chi-square|Bayesian|Monte Carlo|confidence interval|CI|posterior|prior|likelihood|probability|significance|statistical)/gi, '<span class="keyword">$1</span>');
     
-    // Format reasoning indicators
-    text = text.replace(/(Examining|Comparing|Applying|Calculating|Assessing|Combining|Conclusion|Initial|Final|Pattern|Evidence|Synthesis)/gi, '<span class="function">$1</span>');
+    // Format reasoning indicators (Cursor yellow)
+    text = text.replace(/(Examining|Comparing|Applying|Calculating|Assessing|Combining|Conclusion|Initial|Final|Pattern|Evidence|Synthesis|Gathering|Recognition|Weighting|Integration|Assessment|Prediction)/gi, '<span class="function">$1</span>');
     
     // Format JSON-like structures
     text = text.replace(/(\{[^}]*\}|\[[^\]]*\])/g, '<span class="string">$1</span>');
     
-    // Format comments
-    text = text.replace(/(\/\/.*$)/gm, '<span class="comment">$1</span>');
+    // Format comments (already formatted, but ensure they stay)
+    text = text.replace(/(\/\/[^\n]*)/g, '<span class="comment">$1</span>');
     
     // Format reasoning separators
-    text = text.replace(/^---$/gm, '<span class="comment">─────────────────────────</span>');
+    text = text.replace(/^---$/gm, '<span class="comment">// ─────────────────────────</span>');
+    
+    // Format section headers
+    text = text.replace(/^===== (.*?) =====$/gm, '<span class="section">// ===== $1 =====</span>');
     
     return text;
 }
