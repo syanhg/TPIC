@@ -1288,31 +1288,39 @@ function parseResponse(text) {
 }
 
 function formatAnalysisText(text, analysis) {
-    // Remove JSON block
+    // Remove JSON block but keep the text
     let display = text.replace(/```json[\s\S]*?```/g, '').trim();
     
-    // Extract structured sections
+    // Always ensure we have content to display
+    if (!display && analysis?.rawText) {
+        display = analysis.rawText.replace(/```json[\s\S]*?```/g, '').trim();
+    }
+    
+    // Extract structured sections - prioritize step-by-step reasoning
+    const stepByStepReasoning = extractSection(display, /STEP-BY-STEP REASONING|REASONING PROCESS|Reasoning Process|### STEP-BY-STEP REASONING|## REASONING PROCESS/i);
     const sections = {
-        evidence: extractSection(display, /## ANALYSIS|### 1\. Evidence Synthesis|Evidence Synthesis/i),
+        stepByStep: stepByStepReasoning,
+        evidence: extractSection(display, /## ANALYSIS|### 1\. Evidence Synthesis|Evidence Synthesis|ANALYSIS SUMMARY/i),
         statistical: extractSection(display, /### 2\. Statistical Reasoning|Statistical Reasoning/i),
         integration: extractSection(display, /### 3\. Multi-Source Integration|Multi-Source Integration/i),
         market: extractSection(display, /### 4\. Market Context|Market Context/i),
-        reasoning: extractSection(display, /### 5\. Final Reasoning|Final Reasoning/i)
+        final: extractSection(display, /### 5\. Final Reasoning|Final Reasoning|Final Prediction/i)
     };
     
     // Format as IDE-style code
     let formatted = '';
     
     // Build IDE-style formatted text with step-by-step reasoning first
-    if (sections.reasoning) {
+    if (sections.stepByStep) {
         formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
-        formatted += formatIDE(sections.reasoning) + '\n\n';
+        formatted += formatIDE(sections.stepByStep) + '\n\n';
         formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
         
         // Also populate summary tab with analysis summary
         const summaryCode = document.getElementById('summaryCode');
-        if (summaryCode && sections.evidence) {
-            const summaryFormatted = formatIDE(sections.evidence);
+        if (summaryCode) {
+            const summaryText = sections.evidence || display.substring(0, 1000);
+            const summaryFormatted = formatIDE(summaryText);
             summaryCode.innerHTML = summaryFormatted;
             const summaryLineCount = (summaryFormatted.match(/\n/g) || []).length + 1;
             const summaryLineNumbers = Array.from({ length: summaryLineCount }, (_, i) => i + 1).join('\n');
@@ -1343,14 +1351,18 @@ function formatAnalysisText(text, analysis) {
         formatted += formatIDE(sections.market) + '\n\n';
     }
     
-    if (sections.reasoning || analysis?.reasoning) {
+    if (sections.final) {
         formatted += `<span class="section">// ===== FINAL REASONING =====</span>\n\n`;
-        formatted += formatIDE(sections.reasoning || analysis?.reasoning || '') + '\n\n';
+        formatted += formatIDE(sections.final) + '\n\n';
     }
     
-    // If no structured sections, format the whole text
-    if (!formatted && display) {
-        formatted = formatIDE(display);
+    // If no structured sections found, format the whole text (always show something)
+    if (!formatted) {
+        if (display) {
+            formatted = formatIDE(display);
+        } else {
+            formatted = '<span class="comment">// Analysis in progress...</span>';
+        }
     }
     
     // Update the code element
@@ -1422,8 +1434,23 @@ function formatIDE(text) {
 }
 
 function extractSection(text, pattern) {
-    const match = text.match(new RegExp(pattern.source + '([\\s\\S]*?)(?=###|##|$)', 'i'));
-    return match ? match[1].trim() : null;
+    if (!text) return null;
+    
+    // Try multiple patterns to find sections
+    const patterns = [
+        new RegExp(pattern.source + '([\\s\\S]*?)(?=###|##|STEP-BY-STEP|REASONING PROCESS|$)', 'i'),
+        new RegExp(pattern.source + '([\\s\\S]*?)(?=\\n\\n##|\\n\\n###|$)', 'i'),
+        new RegExp(pattern.source + '([\\s\\S]*?)(?=\\n##|\\n###|$)', 'i')
+    ];
+    
+    for (const regex of patterns) {
+        const match = text.match(regex);
+        if (match && match[1] && match[1].trim().length > 10) {
+            return match[1].trim();
+        }
+    }
+    
+    return null;
 }
 
 function formatParagraphs(text) {
