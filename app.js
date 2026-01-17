@@ -10,22 +10,29 @@ async function init() {
 }
 
 async function loadTags() {
-    try {
-        const response = await fetch(`${API_BASE}/tags?limit=100`);
-        const tags = await response.json();
-        const topicFilter = document.getElementById('topicFilter');
-        
-        if (Array.isArray(tags)) {
-            tags.forEach(tag => {
-                const option = document.createElement('option');
-                option.value = tag.id;
-                option.textContent = tag.label;
-                topicFilter.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error('Error loading tags:', error);
-    }
+    const topicFilter = document.getElementById('topicFilter');
+    if (!topicFilter) return;
+    
+    // Use the same categories as the buttons
+    const categories = [
+        { value: '', label: 'All' },
+        { value: '2', label: 'Politics' },
+        { value: '7', label: 'Sports' },
+        { value: '21', label: 'Crypto' },
+        { value: '18', label: 'Finance' },
+        { value: '11', label: 'Geopolitics' },
+        { value: '20', label: 'Tech' },
+        { value: '13', label: 'Culture' },
+        { value: '14', label: 'Economy' },
+        { value: '15', label: 'Climate' }
+    ];
+    
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.value;
+        option.textContent = category.label;
+        topicFilter.appendChild(option);
+    });
 }
 
 async function loadMarkets() {
