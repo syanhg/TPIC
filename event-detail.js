@@ -364,20 +364,23 @@ async function fetchMultipleSources(event) {
     const allSources = [];
     const searchQueries = generateSearchQueries(event);
     
-    // Optimized: Fetch from fastest sources first, limit results for speed
+    // Enhanced: Fetch from diverse real-time sources in parallel with fast timeouts
     const sourcePromises = [
-        searchWithExa(searchQueries.exa, 5).catch(e => { console.error('Exa error:', e); return []; }),
-        searchWithNewsAPI(event.title).catch(e => { console.error('NewsAPI error:', e); return []; }),
-        searchWithTavily(event.title).catch(e => { console.error('Tavily error:', e); return []; })
+        searchWithExa(searchQueries.exa, 6).catch(() => []),
+        searchWithNewsAPI(event.title).catch(() => []),
+        searchWithTavily(event.title).catch(() => []),
+        searchWithSerper(event.title).catch(() => []),
+        searchWithDuckDuckGo(event.title).catch(() => []),
+        searchWithReddit(event.title).catch(() => [])
     ];
     
-    // Use Promise.race to get first results quickly, then wait for all
-    const quickResults = await Promise.race([
-        Promise.allSettled(sourcePromises.slice(0, 2)), // Fast sources first
-        new Promise(resolve => setTimeout(() => resolve([]), 3000)) // Timeout after 3s
-    ]);
-    
-    const allResults = await Promise.allSettled(sourcePromises);
+    // Fast parallel fetching - get results as they come
+    const allResults = await Promise.allSettled(
+        sourcePromises.map(p => Promise.race([
+            p,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2500))
+        ]).catch(() => []))
+    );
     
     allResults.forEach((result) => {
         if (result.status === 'fulfilled' && Array.isArray(result.value)) {
@@ -385,28 +388,37 @@ async function fetchMultipleSources(event) {
         }
     });
     
-    // Fast deduplication
+    // Fast deduplication with URL normalization
     const uniqueSources = deduplicateSources(allSources);
     
-    // Quick sort and limit
+    // Enhanced scoring with multiple factors
     return uniqueSources
-        .sort((a, b) => {
-            const aScore = (a.relevanceScore || 0.5) * (a.isRecent ? 1.2 : 1);
-            const bScore = (b.relevanceScore || 0.5) * (b.isRecent ? 1.2 : 1);
-            return bScore - aScore;
+        .map(source => {
+            // Calculate enhanced relevance score
+            let score = source.relevanceScore || 0.5;
+            if (source.isRecent) score *= 1.3;
+            if (source.source === 'Exa AI' || source.source === 'Tavily AI') score *= 1.2;
+            if (source.text && source.text.length > 300) score *= 1.15;
+            if (source.url && (source.url.includes('news') || source.url.includes('reuters') || source.url.includes('bloomberg'))) score *= 1.1;
+            return { ...source, relevanceScore: Math.min(1, score) };
         })
-        .slice(0, 10); // Reduced to 10 for speed
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .slice(0, 18); // More sources for better reasoning
 }
 
 function generateSearchQueries(event) {
     const title = event.title;
     const keywords = extractKeywords(title);
+    const currentYear = new Date().getFullYear();
     
+    // Enhanced query generation with more specific contexts
     return {
-        exa: `${title} predictions analysis forecast 2026`,
-        news: `${keywords.join(' ')} latest news updates`,
-        tavily: `${title} market analysis expert opinion`,
-        serper: `${title} real-time updates breaking news`
+        exa: `${title} predictions analysis forecast ${currentYear} ${currentYear + 1} market trends`,
+        news: `${keywords.join(' ')} latest news updates ${currentYear} breaking`,
+        tavily: `${title} market analysis expert opinion forecast`,
+        serper: `${title} real-time updates breaking news ${currentYear}`,
+        reddit: `${title} discussion analysis predictions`,
+        duckduckgo: `${title} ${currentYear} forecast prediction`
     };
 }
 
@@ -682,8 +694,14 @@ async function searchWithTavily(query) {
 
 async function searchWithDuckDuckGo(query) {
     try {
-        // DuckDuckGo Instant Answer API (free, no API key)
-        const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        
+        const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`, {
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) throw new Error('DuckDuckGo failed');
         const data = await response.json();
@@ -703,7 +721,7 @@ async function searchWithDuckDuckGo(query) {
         
         // Add related topics
         if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
-            data.RelatedTopics.slice(0, 3).forEach(topic => {
+            data.RelatedTopics.slice(0, 4).forEach(topic => {
                 if (topic.Text) {
                     results.push({
                         title: topic.Text.substring(0, 100),
@@ -719,7 +737,48 @@ async function searchWithDuckDuckGo(query) {
         return results;
         
     } catch (error) {
-        console.error('DuckDuckGo error:', error);
+        if (error.name !== 'AbortError') {
+            console.error('DuckDuckGo error:', error);
+        }
+        return [];
+    }
+}
+
+async function searchWithReddit(query) {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        
+        // Reddit search via JSON API (free, no auth needed for read)
+        const searchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&limit=5&sort=relevance`;
+        
+        const response = await fetch(searchUrl, {
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'AndoRead/1.0'
+            }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) throw new Error('Reddit search failed');
+        const data = await response.json();
+        
+        if (!data.data || !data.data.children) return [];
+        
+        return data.data.children.slice(0, 4).map(post => ({
+            title: post.data.title || '',
+            url: `https://reddit.com${post.data.permalink}`,
+            text: post.data.selftext || post.data.title || '',
+            relevanceScore: 0.7,
+            source: 'Reddit',
+            isRecent: (Date.now() / 1000 - post.data.created_utc) < 2592000 // Last 30 days
+        }));
+        
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error('Reddit error:', error);
+        }
         return [];
     }
 }
@@ -998,77 +1057,163 @@ function analyzeSourcesLocally(event, allSources) {
 }
 
 function buildPrompt(event, allSources) {
-    const sources = allSources.slice(0, 12).map((r, i) => {
+    // Enhanced context engineering: better source processing and context extraction
+    const sources = allSources.slice(0, 18).map((r, i) => {
         const text = (r.text || '').replace(/\n+/g, ' ').trim();
         const domain = r.url ? (new URL(r.url).hostname.replace('www.', '') || 'Unknown') : 'AI Source';
-        return `SOURCE ${i+1} [${r.source || 'Unknown'}]: "${r.title}"
-From: ${domain}
-Content: ${text.substring(0, 800)}
-Relevance: ${(r.relevanceScore || 0.5).toFixed(2)}
+        
+        // Extract key information from text
+        const keyPhrases = extractKeyPhrases(text);
+        const sentiment = analyzeTextSentiment(text);
+        
+        return `SOURCE ${i+1} [${r.source || 'Unknown'} | Relevance: ${(r.relevanceScore || 0.5).toFixed(2)} | ${sentiment}]:
+Title: "${r.title}"
+Domain: ${domain}
+Key Phrases: ${keyPhrases.join(', ')}
+Content: ${text.substring(0, 1000)}
+URL: ${r.url || 'N/A'}
 ---`;
     }).join('\n\n');
     
+    // Enhanced context: extract event context
+    const eventContext = extractEventContext(event);
     const currentDate = new Date().toISOString().split('T')[0];
+    const currentTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     
-    return `You are an expert prediction market analyst with advanced statistical training. Analyze this event using STATISTICALLY GROUNDED METHODS and provide rigorous probability predictions.
+    // Source diversity analysis
+    const sourceTypes = [...new Set(allSources.map(s => s.source))];
+    const sourceCounts = sourceTypes.map(type => ({
+        type,
+        count: allSources.filter(s => s.source === type).length
+    }));
+    
+    return `You are an elite prediction market analyst with expertise in statistical modeling, Bayesian inference, and real-time data synthesis. Your task is to provide highly accurate probability predictions using MULTIPLE DIVERSE REAL-TIME SOURCES.
 
-EVENT: "${event.title}"
-Market Volume: ${event.volume}
-24h Volume: ${event.volume24h || 'N/A'}
-Liquidity: ${event.liquidity || 'N/A'}
-Closes: ${event.closeDate}
-Current Date: ${currentDate}
+EVENT CONTEXT:
+Title: "${event.title}"
+${eventContext}
+Market Metrics:
+- Total Volume: ${event.volume}
+- 24h Volume: ${event.volume24h || 'N/A'}
+- Liquidity: ${event.liquidity || 'N/A'}
+- Close Date: ${event.closeDate}
+- Current Date/Time: ${currentDate} ${currentTime}
 
-REAL-TIME SOURCES (${allSources.length} sources from multiple APIs):
+SOURCE DIVERSITY ANALYSIS:
+Total Sources: ${allSources.length}
+Source Types: ${sourceCounts.map(s => `${s.type} (${s.count})`).join(', ')}
+Recent Sources: ${allSources.filter(s => s.isRecent).length}
+High Relevance Sources: ${allSources.filter(s => (s.relevanceScore || 0) > 0.7).length}
+
+REAL-TIME SOURCES (${allSources.length} sources from ${sourceTypes.length} different APIs):
 ${sources}
 
-STATISTICAL ANALYSIS REQUIREMENTS:
-1. Apply Bayesian inference to update prior probabilities with evidence
-2. Calculate 95% confidence intervals for all probability estimates
-3. Perform statistical significance testing (chi-square, t-tests where applicable)
-4. Consider sample size and statistical power
-5. Account for source reliability weights in calculations
-6. Apply Monte Carlo simulation for uncertainty quantification
-7. Use regression analysis if temporal patterns exist
-8. Calculate effect sizes and practical significance
+ENHANCED ANALYSIS FRAMEWORK:
+
+1. CONTEXT SYNTHESIS:
+   - Cross-reference information across ALL ${allSources.length} sources
+   - Identify consensus patterns and outlier perspectives
+   - Weight sources by: relevance score, recency, domain authority, content depth
+   - Extract temporal patterns and trend indicators
+
+2. STATISTICAL MODELING:
+   - Apply Bayesian inference with evidence-weighted priors
+   - Calculate 95% confidence intervals using normal approximation
+   - Perform chi-square tests for categorical evidence
+   - Apply Monte Carlo simulation (1000+ iterations) for uncertainty
+   - Calculate effect sizes and practical significance
+   - Consider sample size adequacy and statistical power
+
+3. MULTI-SOURCE REASONING:
+   - Compare perspectives from news, market analysis, expert opinions, and social signals
+   - Identify conflicting evidence and assess reliability
+   - Weight recent information more heavily
+   - Consider source credibility (news sites > forums > social media)
+
+4. MARKET DYNAMICS:
+   - Analyze volume trends and liquidity implications
+   - Consider market efficiency and information asymmetry
+   - Factor in closing date proximity and time decay
 
 TASK:
-1. Synthesize information from ALL sources using statistical methods
-2. Apply weighted analysis based on source credibility and recency
-3. Calculate probabilities using Bayesian updating
-4. Provide confidence intervals for all estimates
-5. Test statistical significance of findings
-6. Explain methodology and cite specific sources
+Provide a comprehensive analysis in this format:
 
-Provide your analysis in this format:
+ANALYSIS (2-3 paragraphs):
+- Synthesize evidence from all ${allSources.length} sources
+- Identify key factors with quantified impact
+- Discuss consensus vs. divergence in sources
+- Apply statistical methods and cite specific sources by number
+- Provide Bayesian posterior probabilities with confidence intervals
+- Report significance testing results
 
-First, write 2-3 concise paragraphs with statistical rigor:
-- Statistical summary of evidence (sample size, effect sizes)
-- Bayesian posterior probabilities with confidence intervals
-- Significance testing results
-- Key factors with quantified impact
-
-Then provide predictions in this exact JSON format:
-
+PREDICTIONS (JSON format):
 \`\`\`json
 {
   "predictions": [
     {"outcome": "Yes", "probability": 0.XX, "confidence": "High|Medium|Low", "ci_lower": 0.XX, "ci_upper": 0.XX},
     {"outcome": "No", "probability": 0.XX, "confidence": "High|Medium|Low", "ci_lower": 0.XX, "ci_upper": 0.XX}
   ],
-  "insight": "One sentence key insight with statistical basis",
+  "insight": "One sentence key insight synthesizing the most important factor from all sources",
   "confidence": "High|Medium|Low",
-  "reasoning": "Brief explanation citing statistical methods used",
+  "reasoning": "Brief explanation of prediction logic citing source numbers and statistical methods",
   "metrics": {
     "sample_size": ${allSources.length},
+    "source_diversity": ${sourceTypes.length},
     "statistical_significance": true/false,
     "bayesian_posterior": 0.XX,
-    "confidence_interval_width": 0.XX
+    "confidence_interval_width": 0.XX,
+    "consensus_strength": "High|Medium|Low"
   }
 }
 \`\`\`
 
-Be statistically rigorous, cite methods, and provide confidence intervals for all estimates.`;
+Be rigorous, cite specific sources by number (e.g., "Source 3 indicates..."), and base all predictions on statistical analysis of the real-time data.`;
+}
+
+function extractKeyPhrases(text) {
+    if (!text || text.length < 50) return [];
+    
+    const words = text.toLowerCase().split(/\s+/);
+    const importantWords = words.filter(w => 
+        w.length > 4 && 
+        !['that', 'this', 'with', 'from', 'their', 'there', 'would', 'could', 'should'].includes(w)
+    );
+    
+    const wordFreq = {};
+    importantWords.forEach(w => {
+        wordFreq[w] = (wordFreq[w] || 0) + 1;
+    });
+    
+    return Object.entries(wordFreq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([word]) => word);
+}
+
+function analyzeTextSentiment(text) {
+    if (!text) return 'Neutral';
+    const lowerText = text.toLowerCase();
+    const positive = ['yes', 'likely', 'will', 'expected', 'favorable', 'positive', 'optimistic', 'gain', 'rise', 'increase', 'success', 'win'].filter(w => lowerText.includes(w)).length;
+    const negative = ['no', 'unlikely', "won't", 'doubt', 'unfavorable', 'negative', 'pessimistic', 'loss', 'fall', 'decrease', 'fail', 'lose'].filter(w => lowerText.includes(w)).length;
+    
+    if (positive > negative) return 'Positive';
+    if (negative > positive) return 'Negative';
+    return 'Neutral';
+}
+
+function extractEventContext(event) {
+    const context = [];
+    if (event.volume && parseFloat(event.volume.replace(/[^0-9.]/g, '')) > 100000) {
+        context.push('- High market interest (volume > $100K)');
+    }
+    if (event.closeDate) {
+        const closeDate = new Date(event.closeDate);
+        const daysUntilClose = Math.ceil((closeDate - new Date()) / (1000 * 60 * 60 * 24));
+        if (daysUntilClose < 30) {
+            context.push(`- Closing soon (${daysUntilClose} days)`);
+        }
+    }
+    return context.join('\n') || '- Standard market conditions';
 }
 
 function parseResponse(text) {
@@ -1109,9 +1254,6 @@ function formatAnalysisText(text) {
     }).join('');
 }
 
-let predictionChart = null;
-let confidenceChart = null;
-
 function displayPredictions(predictions) {
     const container = document.getElementById('predictionRows');
     container.innerHTML = predictions.map(pred => `
@@ -1121,91 +1263,6 @@ function displayPredictions(predictions) {
             ${pred.ci_lower && pred.ci_upper ? `<span class="text-[10px] text-gray-500">[${(pred.ci_lower * 100).toFixed(0)}-${(pred.ci_upper * 100).toFixed(0)}%]</span>` : ''}
         </div>
     `).join('');
-    
-    // Create prediction distribution chart
-    if (typeof Chart !== 'undefined' && predictions.length > 0) {
-        const vizContainer = document.getElementById('visualizationsContainer');
-        if (vizContainer) {
-            vizContainer.classList.remove('hidden');
-            
-            const predCtx = document.getElementById('predictionChart');
-            const confCtx = document.getElementById('confidenceChart');
-            
-            if (predCtx) {
-                if (predictionChart) predictionChart.destroy();
-                predictionChart = new Chart(predCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: predictions.map(p => p.outcome),
-                        datasets: [{
-                            data: predictions.map(p => p.probability * 100),
-                            backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'].slice(0, predictions.length),
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => `${context.label}: ${context.parsed.toFixed(1)}%`
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Confidence Interval Chart
-            if (confCtx && predictions.some(p => p.ci_lower && p.ci_upper)) {
-                if (confidenceChart) confidenceChart.destroy();
-                
-                const hasCI = predictions.filter(p => p.ci_lower && p.ci_upper);
-                if (hasCI.length > 0) {
-                    confidenceChart = new Chart(confCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: predictions.map(p => p.outcome),
-                            datasets: [{
-                                label: 'Probability',
-                                data: predictions.map(p => p.probability * 100),
-                                backgroundColor: predictions.map((p, i) => ['#3b82f6', '#ef4444', '#10b981'][i % 3]),
-                                borderColor: predictions.map((p, i) => ['#2563eb', '#dc2626', '#059669'][i % 3]),
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        label: (context) => {
-                                            const pred = predictions[context.dataIndex];
-                                            if (pred.ci_lower && pred.ci_upper) {
-                                                return `${pred.outcome}: ${(pred.probability * 100).toFixed(1)}% [${(pred.ci_lower * 100).toFixed(1)}-${(pred.ci_upper * 100).toFixed(1)}%]`;
-                                            }
-                                            return `${pred.outcome}: ${(pred.probability * 100).toFixed(1)}%`;
-                                        }
-                                    }
-                                }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    max: 100,
-                                    ticks: { callback: (value) => value + '%' }
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-        }
-    }
 }
 
 function displayModelInsight(insight) {
