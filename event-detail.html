@@ -59,27 +59,30 @@
     </style>
 </head>
 <body>
-    <!-- Header - Minimal Cursor Style -->
-    <header class="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
+    <!-- Header - AndoRead Style (aligned with index) -->
+    <header class="sticky top-0 z-50 w-full bg-white border-b border-gray-200/50">
         <div class="container mx-auto px-6 lg:px-8">
-            <div class="flex h-14 items-center justify-between">
-                <a href="index.html" class="text-lg font-medium text-gray-900" style="font-family: 'Inter', sans-serif;">
+            <div class="flex h-16 items-center justify-between">
+                <!-- Logo - Aligned with content -->
+                <a href="index.html" class="text-2xl font-medium text-gray-900 tracking-tight" style="font-family: 'Inter', sans-serif; font-weight: 500;">
                     AndoRead
                 </a>
+                
+                <!-- Search Bar - Top Right -->
                 <div class="relative w-full max-w-sm">
                     <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
-                    <input type="text" id="searchInput" placeholder="Search..." 
-                        class="h-9 w-full rounded-md border border-gray-200 bg-gray-50/50 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-900/20 focus:border-gray-300 transition-all" 
+                    <input type="text" id="searchInput" placeholder="Search Markets" 
+                        class="h-10 w-full rounded-lg border border-gray-200 bg-gray-50/50 pl-10 pr-4 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 transition-all" 
                         style="font-family: 'Inter', sans-serif;" />
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Content - Cursor Style Layout -->
-    <div class="container mx-auto px-6 lg:px-8 py-8 max-w-6xl">
+    <!-- Main Content - Aligned with header -->
+    <div class="container mx-auto px-6 lg:px-8 py-8 max-w-7xl">
         <!-- Back Navigation -->
         <div class="mb-6">
             <a href="index.html" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
@@ -168,27 +171,6 @@
             </div>
         </div>
 
-        <!-- Conversation - Minimal -->
-        <div class="mb-8 rounded-lg border border-gray-200 bg-white">
-            <div id="conversationContainer" class="p-4 space-y-3 max-h-64 overflow-y-auto">
-                <div class="flex items-start gap-2.5">
-                    <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-600 text-[10px] font-medium">AI</div>
-                    <div class="flex-1 text-sm text-gray-700">
-                        <p>Analysis complete. Ask any questions about this event.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="flex items-end gap-2 border-t border-gray-200 p-3">
-                <textarea id="questionInput" rows="1" placeholder="Ask a question..." 
-                    class="flex-1 min-h-[32px] resize-none rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-900/20 focus:border-gray-300 transition-all"
-                    style="max-height: 100px; font-family: 'Inter', sans-serif;"></textarea>
-                <button id="sendQuestionBtn" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
-                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                </button>
-            </div>
-        </div>
 
         <!-- Sources - Minimal Grid -->
         <div class="rounded-lg border border-gray-200 bg-white">
