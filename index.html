@@ -45,65 +45,99 @@
             },
         }
     </script>
+    <link rel="stylesheet" href="enhanced-styles.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        * { font-family: 'Inter', sans-serif; }
+        body {
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-background text-foreground">
-    <!-- Header - shadcn/ui style -->
-    <header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div class="container flex h-16 items-center justify-between px-4">
-            <div class="flex items-center gap-6">
-                <a href="index.html" class="text-lg font-semibold">The Predictive Intelligence Company</a>
-                <nav class="hidden md:flex items-center gap-6">
-                    <a href="index.html" class="text-sm font-medium text-foreground">Events</a>
-                    <a href="community.html" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Community</a>
+    <!-- Header - Enhanced with micro-details -->
+    <header class="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+        <div class="container flex h-14 items-center justify-between px-6">
+            <div class="flex items-center gap-8">
+                <a href="index.html" class="flex items-center gap-2 text-base font-semibold tracking-tight hover:text-primary transition-colors">
+                    <div class="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold">P</div>
+                    <span class="hidden sm:inline">The Predictive Intelligence Company</span>
+                    <span class="sm:hidden">TPIC</span>
+                </a>
+                <nav class="hidden md:flex items-center gap-1">
+                    <a href="index.html" class="relative inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Events
+                    </a>
+                    <a href="community.html" class="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Community
+                    </a>
                 </nav>
             </div>
-            <div class="flex flex-1 items-center justify-end gap-4">
-                <div class="relative w-full max-w-sm">
-                    <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex flex-1 items-center justify-end gap-3">
+                <div class="relative w-full max-w-xs">
+                    <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
-                    <input type="text" id="searchInput" placeholder="Search events..." 
-                        class="h-10 w-full rounded-md border border-input bg-background px-10 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                    <input type="text" id="searchInput" placeholder="Find events..." 
+                        class="h-9 w-full rounded-md border border-input bg-background/50 px-9 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:bg-background transition-all" />
+                    <kbd class="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                        <span class="text-xs">⌘</span>F
+                    </kbd>
                 </div>
             </div>
         </div>
     </header>
 
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
-        <!-- Navigation Tabs -->
-        <div class="mb-6 flex items-center gap-2 border-b">
-            <button class="nav-tab active inline-flex items-center justify-center gap-2 border-b-2 border-primary px-4 py-3 text-sm font-medium transition-colors" data-category="all">
+    <div class="container mx-auto px-6 py-6 max-w-7xl">
+        <!-- Page Header -->
+        <div class="mb-6 flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-semibold tracking-tight">Markets</h1>
+                <p class="mt-1 text-sm text-muted-foreground">Browse and analyze prediction markets</p>
+        </div>
+    </div>
+
+        <!-- Navigation Tabs - Enhanced -->
+        <div class="mb-6 flex items-center gap-1 overflow-x-auto border-b border-border/50 pb-0 scrollbar-hide">
+            <button class="nav-tab active relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-primary px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" data-category="all">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
                 Trending
             </button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="2">Politics</button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="7">Sports</button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="21">Crypto</button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="18">Finance</button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="11">Geopolitics</button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="20">Tech</button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="13">Culture</button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="14">Economy</button>
-            <button class="nav-tab inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" data-tag="15">Climate</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="2">Politics</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="7">Sports</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="21">Crypto</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="18">Finance</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="11">Geopolitics</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="20">Tech</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="13">Culture</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="14">Economy</button>
+            <button class="nav-tab relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" data-tag="15">Climate</button>
         </div>
 
-        <!-- Filters -->
-        <div class="mb-6 flex flex-wrap items-center gap-4">
+        <!-- Filters - Enhanced with better spacing -->
+        <div class="mb-6 flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
-                <label class="text-sm font-medium">Topic:</label>
-                <select id="topicFilter" class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                    <option value="">All</option>
+                <label class="text-xs font-medium text-muted-foreground">Topic</label>
+                <select id="topicFilter" class="h-8 rounded-md border border-input bg-background px-2.5 py-1 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 transition-all">
+                    <option value="">All Topics</option>
                 </select>
             </div>
             <div class="flex items-center gap-2">
-                <label class="text-sm font-medium">Sort by:</label>
-                <select id="sortBy" class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <label class="text-xs font-medium text-muted-foreground">Sort</label>
+                <select id="sortBy" class="h-8 rounded-md border border-input bg-background px-2.5 py-1 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 transition-all">
                     <option value="volume24hr">24h Volume</option>
                     <option value="volume">Total Volume</option>
                     <option value="liquidity">Liquidity</option>
@@ -111,41 +145,78 @@
                 </select>
             </div>
             <div class="flex items-center gap-2">
-                <label class="text-sm font-medium">Order:</label>
-                <select id="orderBy" class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <label class="text-xs font-medium text-muted-foreground">Order</label>
+                <select id="orderBy" class="h-8 rounded-md border border-input bg-background px-2.5 py-1 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 transition-all">
                     <option value="desc">High to Low</option>
                     <option value="asc">Low to High</option>
                 </select>
             </div>
-            <div class="ml-auto flex items-center gap-2">
-                <label class="text-sm font-medium">Status:</label>
-                <label class="inline-flex items-center gap-2">
-                    <span class="text-sm">Live</span>
-                    <input type="checkbox" id="statusToggle" checked class="peer sr-only" />
-                    <div class="relative h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-primary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring peer-focus:ring-offset-2">
-                        <div class="absolute left-1 top-1 h-4 w-4 rounded-full bg-background transition-transform peer-checked:translate-x-5"></div>
-                    </div>
-                    <span class="text-sm">Historical</span>
+            <div class="ml-auto flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-medium text-muted-foreground">Live</span>
+                    <label class="relative inline-flex h-5 w-9 cursor-pointer items-center">
+                        <input type="checkbox" id="statusToggle" checked class="peer sr-only" />
+                        <div class="peer h-5 w-9 rounded-full bg-muted transition-colors duration-200 peer-checked:bg-primary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring peer-focus:ring-offset-1"></div>
+                        <div class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-background shadow-sm transition-transform duration-200 peer-checked:translate-x-4"></div>
                 </label>
+                    <span class="text-xs font-medium text-muted-foreground">Historical</span>
+                </div>
             </div>
         </div>
 
-        <!-- Loading State -->
-        <div id="loading" class="hidden flex items-center justify-center py-12">
-            <div class="flex items-center gap-2 text-muted-foreground">
-                <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        <!-- Loading State - Enhanced -->
+        <div id="loading" class="hidden">
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div class="card-hover rounded-lg border border-border/50 bg-card p-6 shadow-sm">
+                    <div class="mb-4 h-40 w-full rounded-md bg-muted animate-pulse"></div>
+                    <div class="space-y-3">
+                        <div class="h-4 w-3/4 rounded bg-muted animate-pulse"></div>
+                        <div class="h-3 w-1/2 rounded bg-muted animate-pulse"></div>
+                        <div class="mt-4 grid grid-cols-2 gap-2">
+                            <div class="h-12 rounded bg-muted animate-pulse"></div>
+                            <div class="h-12 rounded bg-muted animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-hover rounded-lg border border-border/50 bg-card p-6 shadow-sm">
+                    <div class="mb-4 h-40 w-full rounded-md bg-muted animate-pulse"></div>
+                    <div class="space-y-3">
+                        <div class="h-4 w-3/4 rounded bg-muted animate-pulse"></div>
+                        <div class="h-3 w-1/2 rounded bg-muted animate-pulse"></div>
+                        <div class="mt-4 grid grid-cols-2 gap-2">
+                            <div class="h-12 rounded bg-muted animate-pulse"></div>
+                            <div class="h-12 rounded bg-muted animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-hover rounded-lg border border-border/50 bg-card p-6 shadow-sm">
+                    <div class="mb-4 h-40 w-full rounded-md bg-muted animate-pulse"></div>
+                    <div class="space-y-3">
+                        <div class="h-4 w-3/4 rounded bg-muted animate-pulse"></div>
+                        <div class="h-3 w-1/2 rounded bg-muted animate-pulse"></div>
+                        <div class="mt-4 grid grid-cols-2 gap-2">
+                            <div class="h-12 rounded bg-muted animate-pulse"></div>
+                            <div class="h-12 rounded bg-muted animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State - Enhanced -->
+        <div id="error" class="hidden rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+            <div class="flex items-start gap-3">
+                <svg class="h-5 w-5 shrink-0 text-destructive mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>Loading markets...</span>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-destructive"></p>
+                </div>
             </div>
         </div>
 
-        <!-- Error State -->
-        <div id="error" class="hidden rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"></div>
-
-        <!-- Markets Grid -->
-        <div id="marketsContainer" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"></div>
+        <!-- Markets Grid - Enhanced -->
+        <div id="marketsContainer" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div>
     </div>
 
     <script src="app.js"></script>
