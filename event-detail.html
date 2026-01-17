@@ -47,36 +47,59 @@
     </script>
     <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link rel="stylesheet" href="enhanced-styles.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        * { font-family: 'Inter', sans-serif; }
+        body {
+            animation: fadeIn 0.2s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-background text-foreground">
-    <!-- Header - shadcn/ui style -->
-    <header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div class="container flex h-16 items-center justify-between px-4">
-            <div class="flex items-center gap-6">
-                <a href="index.html" class="text-lg font-semibold">The Predictive Intelligence Company</a>
+    <!-- Header - Enhanced -->
+    <header class="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+        <div class="container flex h-14 items-center justify-between px-6">
+            <div class="flex items-center gap-8">
+                <a href="index.html" class="flex items-center gap-2 text-base font-semibold tracking-tight hover:text-primary transition-colors">
+                    <div class="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold">P</div>
+                    <span class="hidden sm:inline">The Predictive Intelligence Company</span>
+                    <span class="sm:hidden">TPIC</span>
+                </a>
+                <nav class="hidden md:flex items-center gap-1">
+                    <a href="index.html" class="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Events
+                    </a>
+                    <a href="community.html" class="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Community
+                    </a>
+                </nav>
             </div>
-            <div class="flex flex-1 items-center justify-end gap-4">
-                <div class="relative w-full max-w-sm">
-                    <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex flex-1 items-center justify-end gap-3">
+                <div class="relative w-full max-w-xs">
+                    <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
-                    <input type="text" id="searchInput" placeholder="Search events..." 
-                        class="h-10 w-full rounded-md border border-input bg-background px-10 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                    <input type="text" id="searchInput" placeholder="Find events..." 
+                        class="h-9 w-full rounded-md border border-input bg-background/50 px-9 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:bg-background transition-all" />
+                    <kbd class="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                        <span class="text-xs">⌘</span>F
+                    </kbd>
                 </div>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
+    <div class="container mx-auto px-6 py-6 max-w-7xl">
         <!-- Back Navigation -->
-        <div class="mb-6">
-            <a href="index.html" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="mb-5">
+            <a href="index.html" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
                 Back to events
@@ -85,15 +108,21 @@
 
         <!-- Event Title -->
         <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div class="flex-1">
-                <h1 id="eventTitle" class="text-3xl font-bold tracking-tight sm:text-4xl break-words">Loading...</h1>
-                <div class="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                    <span id="closeDate">Closes: Loading...</span>
-                    <span id="lastUpdate"></span>
+            <div class="flex-1 min-w-0">
+                <h1 id="eventTitle" class="text-2xl font-semibold tracking-tight sm:text-3xl break-words">Loading...</h1>
+                <div class="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span id="closeDate">Closes: Loading...</span>
+                    </div>
+                    <span class="text-muted-foreground/60">•</span>
+                    <span id="lastUpdate" class="text-muted-foreground/70"></span>
                 </div>
             </div>
-            <button id="refreshBtn" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="refreshBtn" class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3.5 py-2 text-xs font-medium text-primary-foreground ring-offset-background transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 Refresh
@@ -101,58 +130,58 @@
         </div>
 
         <!-- Two Column Layout -->
-        <div class="grid gap-6 lg:grid-cols-[380px_1fr]">
+        <div class="grid gap-5 lg:grid-cols-[380px_1fr]">
             <!-- Left Column: Prediction -->
-            <div class="space-y-6">
+            <div class="space-y-5">
                 <!-- Market Statistics -->
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div class="p-6">
-                        <h2 class="mb-4 text-lg font-semibold">Market Statistics</h2>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div class="rounded-md border bg-muted/50 p-3">
-                                <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Volume</div>
-                                <div class="mt-1 text-lg font-semibold" id="volumeStat">$0</div>
+                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
+                    <div class="p-5">
+                        <h2 class="mb-4 text-sm font-semibold">Market Statistics</h2>
+                        <div class="grid grid-cols-3 gap-2.5">
+                            <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
+                                <div class="stat-label mb-1">Volume</div>
+                                <div class="stat-value text-base" id="volumeStat">$0</div>
                             </div>
-                            <div class="rounded-md border bg-muted/50 p-3">
-                                <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">24h Volume</div>
-                                <div class="mt-1 text-lg font-semibold" id="volume24hStat">$0</div>
+                            <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
+                                <div class="stat-label mb-1">24h Vol</div>
+                                <div class="stat-value text-base" id="volume24hStat">$0</div>
                             </div>
-                            <div class="rounded-md border bg-muted/50 p-3">
-                                <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Liquidity</div>
-                                <div class="mt-1 text-lg font-semibold" id="liquidityStat">$0</div>
+                            <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
+                                <div class="stat-label mb-1">Liquidity</div>
+                                <div class="stat-value text-base" id="liquidityStat">$0</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- AI Predictions -->
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div class="p-6">
-                        <h2 class="mb-4 text-lg font-semibold">AI Predictions</h2>
+                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
+                    <div class="p-5">
+                        <h2 class="mb-4 text-sm font-semibold">AI Predictions</h2>
                         <div class="space-y-0">
-                            <div class="flex items-center justify-between border-b px-4 py-3 text-sm font-medium">
+                            <div class="flex items-center justify-between border-b border-border/50 px-3 py-2.5 text-xs font-medium text-muted-foreground">
                                 <span>Outcome</span>
                                 <span>Probability</span>
                             </div>
-                            <div id="predictionRows" class="divide-y"></div>
+                            <div id="predictionRows" class="divide-y divide-border/50"></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Key Insight -->
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div class="p-6">
-                        <h3 class="mb-3 text-base font-semibold">Key Insight</h3>
-                        <p id="modelInsightText" class="text-sm text-muted-foreground leading-relaxed">Analyzing event with AI agents...</p>
+                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
+                    <div class="p-5">
+                        <h3 class="mb-3 text-sm font-semibold">Key Insight</h3>
+                        <p id="modelInsightText" class="text-xs text-muted-foreground leading-relaxed">Analyzing event with AI agents...</p>
                     </div>
                 </div>
             </div>
 
             <!-- Right Column: Analysis -->
-            <div class="space-y-6">
+            <div class="space-y-5">
                 <!-- Analysis Status - Perplexity Style -->
-                <div id="analysisStatus" class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div class="p-6 space-y-6">
+                <div id="analysisStatus" class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
+                    <div class="p-5 space-y-5">
                         <div class="space-y-4">
                             <div class="flex items-center gap-2">
                                 <div class="h-2 w-2 animate-pulse rounded-full bg-primary"></div>
@@ -174,19 +203,19 @@
                 </div>
 
                 <!-- Statistical Analysis -->
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div class="p-6">
-                        <h3 class="mb-4 text-lg font-semibold">Statistical Analysis & Rationale</h3>
-                        <div id="analysisContent" class="prose prose-sm max-w-none text-sm leading-relaxed">
+                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
+                    <div class="p-5">
+                        <h3 class="mb-4 text-sm font-semibold">Statistical Analysis & Rationale</h3>
+                        <div id="analysisContent" class="prose prose-sm max-w-none text-xs leading-relaxed">
                             <p class="text-muted-foreground">AI is conducting comprehensive multi-source analysis...</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Follow-up Conversation -->
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div class="p-6">
-                        <h3 class="mb-4 text-lg font-semibold">Ask Follow-up Questions</h3>
+                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
+                    <div class="p-5">
+                        <h3 class="mb-4 text-sm font-semibold">Ask Follow-up Questions</h3>
                         <div id="conversationContainer" class="mb-4 space-y-4 max-h-96 overflow-y-auto">
                             <div class="flex items-start gap-3">
                                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">AI</div>
@@ -208,10 +237,10 @@
                 </div>
 
                 <!-- Sources -->
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div class="p-6">
-                        <h3 class="mb-4 text-lg font-semibold">Credible Sources (<span id="totalSources">0</span>)</h3>
-                        <div id="sourcesList" class="space-y-3"></div>
+                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
+                    <div class="p-5">
+                        <h3 class="mb-4 text-sm font-semibold">Credible Sources (<span id="totalSources" class="text-muted-foreground">0</span>)</h3>
+                        <div id="sourcesList" class="space-y-2.5"></div>
                     </div>
                 </div>
             </div>
