@@ -145,7 +145,7 @@ function renderMarkets() {
 
 function createMarketCard(event) {
     const card = document.createElement('div');
-    card.className = 'group card-hover cursor-pointer rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm transition-all hover:border-border hover:shadow-md';
+    card.className = 'group cursor-pointer rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-gray-300';
     
     const markets = event.markets || [];
     const mainMarket = markets[0] || {};
@@ -192,66 +192,64 @@ function createMarketCard(event) {
     const numMarkets = markets.length || 1;
     
     card.innerHTML = `
-        <div class="relative h-40 w-full overflow-hidden rounded-t-lg bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+        <div class="relative h-48 w-full overflow-hidden rounded-t-xl bg-gradient-to-br from-gray-100 to-gray-50">
             ${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(event.title)}" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.style.display='none'">` : ''}
-            <div class="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
             <div class="absolute top-3 right-3">
-                <span class="inline-flex items-center gap-1.5 rounded-full ${isLive ? 'bg-green-500/90 text-white backdrop-blur-sm' : 'bg-muted/90 text-muted-foreground backdrop-blur-sm'} px-2 py-0.5 text-[10px] font-medium shadow-sm">
+                <span class="inline-flex items-center gap-1.5 rounded-full ${isLive ? 'bg-green-500 text-white' : 'bg-gray-600 text-white'} px-2.5 py-1 text-[10px] font-medium shadow-sm">
                     <span class="h-1.5 w-1.5 rounded-full ${isLive ? 'bg-white animate-pulse' : 'bg-current'}"></span>
                     ${isLive ? 'LIVE' : 'CLOSED'}
                 </span>
             </div>
         </div>
         <div class="p-5">
-            <h3 class="mb-3 line-clamp-2 text-base font-semibold leading-snug group-hover:text-primary transition-colors">${escapeHtml(event.title)}</h3>
+            <h3 class="mb-3 line-clamp-2 text-base font-semibold text-gray-900 leading-snug group-hover:text-gray-700 transition-colors">${escapeHtml(event.title)}</h3>
             
             <div class="mb-4 grid grid-cols-2 gap-2.5">
-                <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
-                    <div class="stat-label mb-1">Volume</div>
-                    <div class="stat-value text-base">${volume}</div>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-2.5 transition-colors hover:bg-gray-100">
+                    <div class="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">Volume</div>
+                    <div class="text-sm font-semibold text-gray-900">${volume}</div>
                 </div>
-                <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
-                    <div class="stat-label mb-1">24h Vol</div>
-                    <div class="stat-value text-base">${volume24hr}</div>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-2.5 transition-colors hover:bg-gray-100">
+                    <div class="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">24h Vol</div>
+                    <div class="text-sm font-semibold text-gray-900">${volume24hr}</div>
                 </div>
-                <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
-                    <div class="stat-label mb-1">Liquidity</div>
-                    <div class="stat-value text-base">${liquidity}</div>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-2.5 transition-colors hover:bg-gray-100">
+                    <div class="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">Liquidity</div>
+                    <div class="text-sm font-semibold text-gray-900">${liquidity}</div>
                 </div>
-                <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
-                    <div class="stat-label mb-1">Markets</div>
-                    <div class="stat-value text-base">${numMarkets}</div>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-2.5 transition-colors hover:bg-gray-100">
+                    <div class="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">Markets</div>
+                    <div class="text-sm font-semibold text-gray-900">${numMarkets}</div>
                 </div>
             </div>
             
             <div class="mb-4">
                 <div class="mb-2 flex items-center justify-between">
-                    <span class="text-xs font-medium text-muted-foreground">Top Predictions</span>
-                    <span class="text-[10px] text-muted-foreground/70">Market Price</span>
+                    <span class="text-xs font-medium text-gray-600">Top Predictions</span>
+                    <span class="text-[10px] text-gray-400">Market Price</span>
                 </div>
                 <div class="space-y-1.5">
                     ${predictions.map(p => `
-                        <div class="table-row-hover flex items-center justify-between rounded-md border border-border/30 bg-muted/20 p-2 transition-colors hover:bg-muted/40">
+                        <div class="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-2 transition-colors hover:bg-gray-100">
                             <div class="flex items-center gap-2">
-                                <div class="h-1.5 w-1.5 rounded-full bg-primary/60"></div>
-                                <div>
-                                    <div class="text-sm font-medium">${escapeHtml(p.outcome)}</div>
-                                </div>
+                                <div class="h-1.5 w-1.5 rounded-full bg-gray-900"></div>
+                                <div class="text-sm font-medium text-gray-900">${escapeHtml(p.outcome)}</div>
                             </div>
-                            <div class="text-sm font-semibold tabular-nums">${(p.price * 100).toFixed(0)}%</div>
+                            <div class="text-sm font-semibold text-gray-900 tabular-nums">${(p.price * 100).toFixed(0)}%</div>
                         </div>
                     `).join('')}
                 </div>
             </div>
             
-            <div class="flex items-center justify-between border-t border-border/50 pt-3.5">
-                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div class="flex items-center justify-between border-t border-gray-200 pt-3.5">
+                <div class="flex items-center gap-1.5 text-xs text-gray-500">
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span>${closeText}</span>
                 </div>
-                <div class="flex items-center gap-1 text-xs text-muted-foreground/70">
+                <div class="flex items-center gap-1 text-xs text-gray-400">
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
@@ -328,54 +326,17 @@ function formatDate(date) {
 
 function setupEventListeners() {
     const searchInput = document.getElementById('searchInput');
-    const searchDropdown = document.getElementById('searchDropdown');
     
-    searchInput.addEventListener('focus', () => {
-        searchDropdown.classList.add('active');
-    });
-    
-    searchInput.addEventListener('click', (e) => {
-        e.stopPropagation();
-        searchDropdown.classList.add('active');
-    });
-    
-    document.addEventListener('click', (e) => {
-        if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
-            searchDropdown.classList.remove('active');
-        }
-    });
-    
-    document.querySelectorAll('.browse-option').forEach(option => {
-        option.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const sortValue = option.dataset.sort;
-            
-            if (sortValue === 'new') {
-                document.getElementById('sortBy').value = 'new';
-                document.getElementById('orderBy').value = 'desc';
-            } else if (sortValue === 'competitive') {
-                document.getElementById('sortBy').value = 'liquidity';
-                document.getElementById('orderBy').value = 'desc';
-            } else {
-                document.getElementById('sortBy').value = sortValue;
-                document.getElementById('orderBy').value = 'desc';
-            }
-            
-            searchDropdown.classList.remove('active');
-            applyFilters();
-            renderMarkets();
-        });
-    });
-    
-    document.querySelectorAll('.nav-tab').forEach(item => {
+    // Category button clicks
+    document.querySelectorAll('.category-btn').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            document.querySelectorAll('.nav-tab').forEach(i => {
-                i.classList.remove('active', 'border-primary', 'text-foreground');
-                i.classList.add('border-transparent', 'text-muted-foreground');
+            document.querySelectorAll('.category-btn').forEach(i => {
+                i.classList.remove('active', 'bg-gray-900', 'text-white');
+                i.classList.add('bg-gray-100', 'text-gray-700');
             });
-            item.classList.add('active', 'border-primary', 'text-foreground');
-            item.classList.remove('border-transparent', 'text-muted-foreground');
+            item.classList.add('active', 'bg-gray-900', 'text-white');
+            item.classList.remove('bg-gray-100', 'text-gray-700');
             
             const tagId = item.dataset.tag;
             const category = item.dataset.category;
@@ -399,7 +360,6 @@ function setupEventListeners() {
     
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            searchDropdown.classList.remove('active');
             applyFilters();
             renderMarkets();
         }
@@ -408,16 +368,24 @@ function setupEventListeners() {
     document.getElementById('topicFilter').addEventListener('change', (e) => {
         currentTagId = e.target.value;
         
-        document.querySelectorAll('.nav-item').forEach(item => {
+        document.querySelectorAll('.category-btn').forEach(item => {
             if (currentTagId && item.dataset.tag === currentTagId) {
-                item.classList.add('active');
-                document.querySelectorAll('.nav-item').forEach(i => {
-                    if (i !== item) i.classList.remove('active');
+                item.classList.add('active', 'bg-gray-900', 'text-white');
+                item.classList.remove('bg-gray-100', 'text-gray-700');
+                document.querySelectorAll('.category-btn').forEach(i => {
+                    if (i !== item) {
+                        i.classList.remove('active', 'bg-gray-900', 'text-white');
+                        i.classList.add('bg-gray-100', 'text-gray-700');
+                    }
                 });
             } else if (!currentTagId && item.dataset.category === 'all') {
-                item.classList.add('active');
-                document.querySelectorAll('.nav-item').forEach(i => {
-                    if (i !== item) i.classList.remove('active');
+                item.classList.add('active', 'bg-gray-900', 'text-white');
+                item.classList.remove('bg-gray-100', 'text-gray-700');
+                document.querySelectorAll('.category-btn').forEach(i => {
+                    if (i !== item) {
+                        i.classList.remove('active', 'bg-gray-900', 'text-white');
+                        i.classList.add('bg-gray-100', 'text-gray-700');
+                    }
                 });
             }
         });
