@@ -250,9 +250,8 @@ async function loadEventData() {
 function displayLoadingPredictions() {
     const container = document.getElementById('predictionRows');
     container.innerHTML = `
-        <div class="flex items-center justify-between px-4 py-3 text-sm">
-            <span class="text-muted-foreground">Analyzing...</span>
-            <span class="text-muted-foreground">--</span>
+        <div class="flex items-center gap-2 rounded-full border border-border/50 bg-muted/30 px-3 py-1.5">
+            <span class="text-xs text-muted-foreground">Analyzing...</span>
         </div>
     `;
 }
@@ -401,26 +400,24 @@ function showSearchingPhase(event) {
     searchQueries.innerHTML = ''; // Clear previous queries
     
     const queries = [
-        { text: `${event.title.substring(0, 45)} predictions 2026`, source: 'Exa AI' },
-        { text: `${event.title.substring(0, 45)} latest news`, source: 'News API' },
-        { text: `${event.title.substring(0, 45)} market analysis`, source: 'Tavily' },
-        { text: `${event.title.substring(0, 45)} real-time updates`, source: 'Serper' },
-        { text: `${event.title.substring(0, 45)} expert forecast`, source: 'Multiple Sources' }
+        { text: `${event.title.substring(0, 50)} predictions 2026` },
+        { text: `${event.title.substring(0, 50)} latest news` },
+        { text: `${event.title.substring(0, 50)} market analysis` }
     ];
     
     queries.forEach((query, i) => {
         setTimeout(() => {
             const el = document.createElement('div');
-            el.className = 'flex items-center gap-2 rounded-md border bg-muted/50 p-2 text-xs';
+            el.className = 'flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 border border-gray-200';
+            el.style.fontFamily = "'Inter', sans-serif";
             el.innerHTML = `
-                <svg class="h-3 w-3 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-3.5 w-3.5 shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <span class="flex-1 break-words">${escapeHtml(query.text)}</span>
-                <span class="shrink-0 text-muted-foreground">${query.source}</span>
+                <span class="text-sm text-gray-700">${escapeHtml(query.text)}</span>
             `;
             searchQueries.appendChild(el);
-        }, i * 100);
+        }, i * 150);
     });
 }
 
@@ -435,17 +432,19 @@ function showReviewingPhase(exaResults) {
         setTimeout(() => {
             const domain = source.url ? new URL(source.url).hostname.replace('www.', '') : 'unknown';
             const domainName = domain.split('.')[0];
+            const title = source.title || domainName;
             
             const el = document.createElement('div');
-            el.className = 'flex items-start gap-3 rounded-md border bg-muted/50 p-2';
+            el.className = 'flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors';
+            el.style.fontFamily = "'Inter', sans-serif";
             
             el.innerHTML = `
-                <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-medium">
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
                     ${domainName.charAt(0).toUpperCase()}
                 </div>
-                <div class="min-w-0 flex-1">
-                    <div class="truncate text-xs font-medium">${escapeHtml(source.title.substring(0, 55))}${source.title.length > 55 ? '...' : ''}</div>
-                    <div class="text-xs text-muted-foreground">${escapeHtml(domainName)}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 mb-1 line-clamp-1">${escapeHtml(title)}</div>
+                    <div class="text-xs text-gray-500">${escapeHtml(domain)}</div>
                 </div>
             `;
             
@@ -938,9 +937,9 @@ function formatAnalysisText(text) {
 function displayPredictions(predictions) {
     const container = document.getElementById('predictionRows');
     container.innerHTML = predictions.map(pred => `
-        <div class="flex items-center justify-between px-4 py-3 text-sm">
-            <span class="font-medium">${escapeHtml(pred.outcome)}</span>
-            <span class="font-semibold">${(pred.probability * 100).toFixed(0)}%</span>
+        <div class="flex items-center gap-2 rounded-full border border-border/50 bg-muted/30 px-3 py-1.5">
+            <span class="text-xs font-medium">${escapeHtml(pred.outcome)}</span>
+            <span class="text-xs font-semibold text-primary">${(pred.probability * 100).toFixed(0)}%</span>
         </div>
     `).join('');
 }
@@ -957,20 +956,21 @@ function displaySources(allSources) {
     
     container.innerHTML = sources.map((source, i) => {
         const domain = source.url ? (new URL(source.url).hostname.replace('www.', '') || 'Unknown') : 'AI Source';
-        const sourceLabel = source.source || 'Unknown';
+        const domainName = domain.split('.')[0];
         const isRecent = source.isRecent ? '🆕' : '';
         
         return `
-        <div class="rounded-md border bg-muted/50 p-4">
-            <div class="mb-2 flex items-start justify-between gap-2">
-                <h4 class="flex-1 text-sm font-medium break-words">${escapeHtml(source.title)} ${isRecent}</h4>
-                ${source.url ? `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener" class="shrink-0 text-xs text-primary underline hover:no-underline">View</a>` : ''}
+        <a href="${source.url || '#'}" target="_blank" rel="noopener" class="group flex items-start gap-3 rounded-md border border-border/50 bg-card p-3 transition-colors hover:border-border hover:bg-muted/30">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary text-xs font-medium">
+                ${domainName.charAt(0).toUpperCase()}
             </div>
-            <p class="mb-2 text-xs text-muted-foreground line-clamp-2">${escapeHtml((source.text || '').substring(0, 200))}${(source.text || '').length > 200 ? '...' : ''}</p>
-            <div class="text-xs text-muted-foreground">
-                [${i + 1}] ${escapeHtml(domain)} • ${sourceLabel} ${source.relevanceScore ? `(${(source.relevanceScore * 100).toFixed(0)}% relevant)` : ''}
+            <div class="min-w-0 flex-1">
+                <div class="mb-1 line-clamp-2 text-xs font-medium group-hover:text-primary transition-colors">
+                    ${escapeHtml(source.title)} ${isRecent}
             </div>
-        </div>
+                <div class="text-[10px] text-muted-foreground">${escapeHtml(domain)}</div>
+            </div>
+        </a>
         `;
     }).join('');
 }
